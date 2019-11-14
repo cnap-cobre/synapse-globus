@@ -1,22 +1,45 @@
-from flask import Flask, url_for, session, redirect, request
+from flask import Flask, url_for, session, redirect, request, render_template
 from datetime import datetime
 import re
 import globus_sdk
 
 app = Flask(__name__)
+app.config.from_pyfile('app.conf')
 
 # Run the app if called via script
 if __name__ == '__main__':
     app.run()
 
-@app.route("/")
-def home():
-    return "Hello, Flask!"
+@app.route('/')
+def index():
+    """
+    This could be any page you like, rendered by Flask.
+    For this simple example, it will either redirect you to login, or print
+    a simple message.
+    """
+    if not session.get('is_authenticated'):
+        return redirect(url_for('globus_login'))
+    authorizer = globus_sdk.AccessTokenAuthorizer(
+        session['tokens']['transfer.api.globus.org']['access_token'])
+    transfer_client = globus_sdk.TransferClient(authorizer=authorizer)
+
+    print("Endpoints belonging to the current logged-in user:")
+    #https://docs.globus.org/api/transfer/endpoint_search/#query_parameters
+    for ep in transfer_client.endpoint_search(filter_scope="recently-used"):
+        print("[{}] {}".format(ep["id"], ep["display_name"], ep["description"], ep["canonical_name"], ep["keywords"]))
+
+    auth2 = globus_sdk.AccessTokenAuthorizer(session['tokens']['auth.globus.org']['access_token'])
+    client = globus_sdk.AuthClient(authorizer=auth2)
+    info = client.oauth2_userinfo()
+    print(info.data)
+    # print('Effective Identity "{}" has Full Name "{}" and Email "{}"'
+    #     .format(info["sub"], info["name"], info["email"]))
+    return "You are successfully logged in!"
 
 
 
 @app.route('/globus_login')
-def login():
+def globus_login():
     """
     Login via Globus Auth.
     May be invoked in one of two scenarios:
@@ -44,11 +67,17 @@ def login():
         code = request.args.get('code')
         tokens = client.oauth2_exchange_code_for_tokens(code)
 
+        info = client.get_identities()
+        print(info.data)
         # store the resulting tokens in the session
         session.update(
             tokens=tokens.by_resource_server,
-            is_authenticated=True
+            is_authenticated=True,
+            #id=info["sub"],
+            #name=info["name"],
+            #email=info["email"]
         )
+
         return redirect(url_for('index'))
 
 
@@ -76,30 +105,23 @@ def logout():
     # there is no tool to help build this (yet!)
     globus_logout_url = (
         'https://auth.globus.org/v2/web/logout' +
-        '?client={}'.format(app.config['PORTAL_CLIENT_ID']) +
+        '?client={}'.format(app.config['APP_CLIENT_ID']) +
         '&redirect_uri={}'.format(redirect_uri) +
         '&redirect_name=Globus Example App')
 
     # Redirect the user to the Globus Auth logout page
     return redirect(globus_logout_url)
 
+@app.route("/upload")
+def uploadGET():
+    return render_template('upload.html')
 
-@app.route("/hello/<name>")
-def hello_there(name):
-    now = datetime.now()
-    formatted_now = now.strftime("%A, %d %B, %Y at %X")
-
-    # Filter the name argument to letters only using regular expressions. URL arguments
-    # can contain arbitrary text, so we restrict to safe characters only.
-    match_object = re.match("[a-zA-Z]+", name)
-
-    if match_object:
-        clean_name = match_object.group(0)
-    else:
-        clean_name = "Friend"
-
-    content = "Hello there, " + clean_name + "! It's " + formatted_now
-    return content
+@app.route("/upload",methods=['POST'])
+def upload():
+    uname=request.form['uname']  
+    passwrd=request.form['pass']  
+    # if uname=="ayush" and passwrd=="google":  
+    return "Welcome %s" %uname  
 
 
 def load_app_client():
