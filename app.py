@@ -2,8 +2,18 @@ from flask import Flask, url_for, session, redirect, request, render_template
 from datetime import datetime
 import re
 import globus_sdk
+import synapse
 
-app = Flask(__name__)
+
+class CustomFlask(Flask):
+    jinja_options = Flask.jinja_options.copy()
+    jinja_options.update(dict(
+        variable_start_string='%%',  # Default is '{{', I'm changing this because Vue.js uses '{{' / '}}'
+        variable_end_string='%%',
+    ))
+
+# app = Flask(__name__)
+app = CustomFlask(__name__)
 app.config.from_pyfile('app.conf')
 
 # Run the app if called via script
@@ -12,6 +22,9 @@ if __name__ == '__main__':
 
 @app.route('/')
 def index():
+
+    synapse.execute()
+
     """
     This could be any page you like, rendered by Flask.
     For this simple example, it will either redirect you to login, or print
@@ -23,10 +36,14 @@ def index():
         session['tokens']['transfer.api.globus.org']['access_token'])
     transfer_client = globus_sdk.TransferClient(authorizer=authorizer)
 
-    print("Endpoints belonging to the current logged-in user:")
-    #https://docs.globus.org/api/transfer/endpoint_search/#query_parameters
-    for ep in transfer_client.endpoint_search(filter_scope="recently-used"):
-        print("[{}] {}".format(ep["id"], ep["display_name"], ep["description"], ep["canonical_name"], ep["keywords"]))
+    print("Endpoints recently used:")
+    try:
+        #https://docs.globus.org/api/transfer/endpoint_search/#query_parameters
+        for ep in transfer_client.endpoint_search(filter_scope="recently-used"):
+            print("[{}] {}".format(ep["id"], ep["display_name"], ep["description"], ep["canonical_name"], ep["keywords"]))
+    except globus_sdk.exc.TransferAPIError as e:
+        if 'Token is not active' in e:
+            return redirect(url_for('globus_login'))
 
     auth2 = globus_sdk.AccessTokenAuthorizer(session['tokens']['auth.globus.org']['access_token'])
     client = globus_sdk.AuthClient(authorizer=auth2)
@@ -67,8 +84,6 @@ def globus_login():
         code = request.args.get('code')
         tokens = client.oauth2_exchange_code_for_tokens(code)
 
-        info = client.get_identities()
-        print(info.data)
         # store the resulting tokens in the session
         session.update(
             tokens=tokens.by_resource_server,
@@ -118,7 +133,12 @@ def uploadGET():
 
 @app.route("/upload",methods=['POST'])
 def upload():
-    uname=request.form['uname']  
+
+    for v in request.form:
+        print("%s : %s" % (v,request.form[v]))
+        if 'fileToUpload' in v:
+             fileAttrList = v.split(",")
+    uname=request.form['file1']  
     passwrd=request.form['pass']  
     # if uname=="ayush" and passwrd=="google":  
     return "Welcome %s" %uname  
