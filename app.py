@@ -23,7 +23,7 @@ if __name__ == '__main__':
 @app.route('/')
 def index():
 
-    synapse.execute()
+    synapse.execute(True)
 
     """
     This could be any page you like, rendered by Flask.
