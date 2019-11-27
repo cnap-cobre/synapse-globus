@@ -42,7 +42,7 @@ def index():
         for ep in transfer_client.endpoint_search(filter_scope="recently-used"):
             print("[{}] {}".format(ep["id"], ep["display_name"], ep["description"], ep["canonical_name"], ep["keywords"]))
     except globus_sdk.exc.TransferAPIError as e:
-        if 'Token is not active' in e:
+        if 'Token is not active' in str(e):
             return redirect(url_for('globus_login'))
 
     auth2 = globus_sdk.AccessTokenAuthorizer(session['tokens']['auth.globus.org']['access_token'])

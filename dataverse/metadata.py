@@ -1,8 +1,6 @@
-class Extract(object):
-    def __init__(self):
-        self.value = 5
-
-    def parse_data(self,filename:str):
+class Metadata(object):
+    
+    def extract(self,filename:str):
         return {}
 
     def get_init_questions(self):
@@ -12,30 +10,43 @@ class Extract(object):
         return
 
     def display_name(self):
-        pass
+        return "N/A"
+
+    def id_num(self):
+        #This should NEVER CHANGE in Subclasses! It's what the user
+        #chooses via script to select the lab number
+        return 0
 
     def get_extractors(self):
-        result = []
-        for sc in Extract.__subclasses__():
-            result.append(sc()) #instantiate
+        result = {}
+        for sc in Metadata.__subclasses__():
+            instance = sc()
+            result[instance.id_num()] = instance
         # [cls.__name__ for cls in Extract.__subclasses__()]
+        result[self.id_num()] = self
         return result
 
-class Travis(Extract):
+class Travis(Metadata):
+    EXPERIMENT_NAME = "Experiment Name (Blank for none): "
     init_questions = {}
 
     def display_name(self):
         return 'Travis Lab'
 
+    def id_num(self):
+        #This should NEVER CHANGE in Subclasses! It's what the user
+        #chooses via script to select the lab number
+        return 1
+
     def get_init_questions(self):
         result = []
-        result.append("Experiment Name (Blank for none): ")
+        result.append(self.EXPERIMENT_NAME)
         return result
 
     def set_init_questions(self,questions:dict):
         self.init_questions = questions
 
-    def parse_data(self,filename:str):
+    def extract(self,filename:str):
         #Check to see if filename matches format gb104847.111:
         #   gb: refers to the experiment name (we progress down the alphabet, gb, gc, gd, etc...)
         #   1: refers to squad (we have 24 testing chambers and more than 24 rats and so they get
@@ -60,6 +71,7 @@ class Travis(Extract):
         result['subject_id'] = filename[6:8]
         result['session'] = session
 
-        if self.init_questions.con
+        if self.EXPERIMENT_NAME in self.init_questions:
+            result['experiment'] = self.init_questions[self.EXPERIMENT_NAME]
 
         return result

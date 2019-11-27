@@ -2,12 +2,13 @@ import sys
 import os
 from dataverse import dataset
 from dataverse import upload
+from dataverse import metadata
 print(sys.argv)
 # sys.argv[1]
 
 def execute(debug:bool):
     beocat=1
-    labType=0
+    labType=-1
     dvkey='9419e587-3b9b-46d6-ae41-1940d075e081'
     ds=None
     desc=None
@@ -42,17 +43,38 @@ def execute(debug:bool):
             for (dirpath, _dirnames, filenames) in os.walk(f):
                 listOfFiles += [os.path.join(dirpath, file) for file in filenames]
         else:
+            if not os.path.exists(f):
+                print("")
+                print("The Following Path Does not exist: "+f)
+                return
+
             listOfFiles.append(f)
     
     print("file List:")
     for f2 in listOfFiles:
         print(f2)
 
-    if labType is None:
+    md = metadata.Metadata()
+    extractors = md.get_extractors()
+
+    if labType < 0:
+        largest_num = 0
         print("Choose Lab Type:")
-        print("1. Travis")
-        print("0. None Of the Above")
-        labType=input("Input Lab Type Number (0-1): ")
+        for ei in extractors.values():
+            print(str(ei.id_num()) + ". " +ei.display_name())
+            if ei.id_num() > largest_num: largest_num = ei.id_num()
+        print('')
+        labType=int(input("Input Lab Type Number (0-"+str(largest_num)+"): "))
+    
+   
+    metadata_extractor = extractors[labType]
+    qs = metadata_extractor.get_init_questions()
+    answers = {}
+    for question in qs:
+        answers[question] = input(question)
+    metadata_extractor.set_init_questions(answers)
+
+    
 
     if dvkey is None:
         dvkey = input("Input Dataverse token:")
@@ -87,15 +109,22 @@ def execute(debug:bool):
     print("beocat: "+str(beocat))
     print("lab: "+str(labType))
     print("dvKey: "+dvkey)
-    print("DS: "+ds)
+    print("DS: "+str(ds))
     print("Desc: "+desc)
     print("Tags:")
     for t in tags:
         print("    "+t)
     print("files:")
-    for f in files:
+    for f in listOfFiles:
         print("    uploading "+f+'...',end='')
-        upload.onefile(base_dv_url,dvkey,ds,f,desc,tags)
+
+        extra_metadata = metadata_extractor.extract(f)
+
+        tags2 = list(tags)
+        for em in extra_metadata.keys():
+            tags2.append(em +" " +extra_metadata[em])
+            
+        upload.onefile(base_dv_url,dvkey,ds,f,desc,tags2)
         print("    done.")
     print("Upload finished!")
 

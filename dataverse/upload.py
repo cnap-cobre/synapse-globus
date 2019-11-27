@@ -1,4 +1,4 @@
-from datetime import datetime
+import os
 import json
 import requests  # http://docs.python-requests.org/en/master/
 
@@ -14,8 +14,9 @@ def onefile(server, api_key, dataset_id,filepath,desc,cats):
     # --------------------------------------------------
     # Prepare "file"
     # --------------------------------------------------
-    file_content = 'content: %s' % datetime.now()
-    files = {'file': ('sample_file.txt', file_content)}
+    f = open(filepath,'rb')
+    file_content = f.read()
+    files = {'file': (os.path.basename(filepath), file_content)}
 
     # --------------------------------------------------
     # Using a "jsonData" parameter, add optional description + file tags
@@ -38,7 +39,7 @@ def onefile(server, api_key, dataset_id,filepath,desc,cats):
     print('-' * 40)
     print('making request: %s' % url_dataset_id)
     r = requests.post(url_dataset_id, data=payload, files=files)
-
+   
     # -------------------
     # Print the response
     # -------------------
