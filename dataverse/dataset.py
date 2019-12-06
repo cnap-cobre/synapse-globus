@@ -17,3 +17,6 @@ def getList(server, apikey):
         tmpds['entity_id'] = item['entity_id']
         existing_datasets.append(tmpds)
     return existing_datasets
+
+def makeNew(server, apiKey, title, author, contact, description, subject):
+    print("To DO! (http://guides.dataverse.org/en/latest/api/native-api.html#create-dataset-command)")

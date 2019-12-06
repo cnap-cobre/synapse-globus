@@ -1,5 +1,5 @@
 <!-- Dev -->
-<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<!-- <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script> -->
 
 <!-- Prod -->
 <!-- <script src="https://cdn.jsdelivr.net/npm/vue"></script> -->
@@ -20,7 +20,11 @@
 
 <html>
    <body>
-      <div id="app" v-cloak @drop.prevent="addFile" @dragover.prevent>
+
+      <div id="dropzone" effectAllowed="move">Drop files here!</div>
+      <ul id="items"></ul>
+
+      <!-- <div id="app" v-cloak @drop.prevent="addFile" @dragover.prevent>
          <h2>Files to Upload (Drag them over)</h2>
          <ul>
             <li v-for="file in files">
@@ -29,64 +33,143 @@
          </ul>
          
          <button :disabled="uploadDisabled" @click="upload">Upload</button>
-      </div>
+      </div> -->
    </body>
 </html>
 
 <script>
-Vue.config.productionTip = false;
-Vue.config.devtools = false;
+// Vue.config.productionTip = false;
+// Vue.config.devtools = false;
 
-Vue.filter('kb', val => {
-  return Math.floor(val/1024);  
-});
+// Vue.filter('kb', val => {
+//   return Math.floor(val/1024);  
+// });
 
-const app = new Vue({
-  el:'#app', 
-  data: {
-    files:[]
-  },
-  computed: {
-    uploadDisabled() {
-      return this.files.length === 0;
-    }
-  },
-  methods:{
-    addFile(e) {
-      let droppedFiles = e.dataTransfer.files;
-      if(!droppedFiles) return;
-      // this tip, convert FileList to array, credit: https://www.smashingmagazine.com/2018/01/drag-drop-file-uploader-vanilla-js/
-      ([...droppedFiles]).forEach(f => {
-        this.files.push(f);
-      });
-    },
-    removeFile(file){
-      this.files = this.files.filter(f => {
-        return f != file;
-      });      
-    },
-    upload() {
+// const app = new Vue({
+//   el:'#app', 
+//   data: {
+//     files:[]
+//   },
+//   computed: {
+//     uploadDisabled() {
+//       return this.files.length === 0;
+//     }
+//   },
+//   methods:{
+//     addFile(e) {
+//       let droppedFiles = e.dataTransfer.files;
+//       if(!droppedFiles) return;
+//       // this tip, convert FileList to array, credit: https://www.smashingmagazine.com/2018/01/drag-drop-file-uploader-vanilla-js/
+//       ([...droppedFiles]).forEach(f => {
+//         this.files.push(f);
+//       });
+//     },
+//     removeFile(file){
+//       this.files = this.files.filter(f => {
+//         return f != file;
+//       });      
+//     },
+//     upload() {
       
-      let formData = new FormData();
-      this.files.forEach((f,x) => {
-        formData.append('fileName'+(x+1), f.name);
-        formData.append('fileLastModified'+(x+1),f.lastModified);
-        formData.append('fileSize'+(x+1), f.size);
-      });
+//       let formData = new FormData();
+//       this.files.forEach((f,x) => {
+//         formData.append('FTO'+(x+1), f.name+'~'+f.lastModified+'~'+f.size);
+//         // formData.append('fileLastModified'+(x+1),f.lastModified);
+//         // formData.append('fileSize'+(x+1), f.size);
+//       });
       
-      fetch('http://localhost:5000/upload', {
-        method:'POST',
-        body: formData
-      })
-      .then(res => res.json())
-      .then(res => {
-         console.log('done uploading', res);
-      })
-      .catch(e => {
-        console.error(JSON.stringify(e.message));
-      });
+//       fetch('http://localhost:5000/upload', {
+//         method:'POST',
+//         body: formData
+//       })
+//       .then(res => res.json())
+//       .then(res => {
+//          console.log('done uploading', res);
+//       })
+//       .catch(e => {
+//         console.error(JSON.stringify(e.message));
+//       });
       
+//     }
+//   }
+
+  
+// })
+
+
+// Drop handler function to get all files
+async function getAllFileEntries(dataTransferItemList) {
+  let fileEntries = [];
+  // Use BFS to traverse entire directory/file structure
+  let queue = [];
+  // Unfortunately dataTransferItemList is not iterable i.e. no forEach
+  for (let i = 0; i < dataTransferItemList.length; i++) {
+     let fo = dataTransferItemList[i].getAsFile();
+     console.debug(fo.size);
+     queue.push(dataTransferItemList[i].webkitGetAsEntry());
+    //queue.push(dataTransferItemList[i]);
+  }
+  while (queue.length > 0) {
+    //let dti = queue.shift();
+    //let entry = dti.webkitGetAsEntry();
+    let entry = queue.shift();
+    if (entry.isFile) {
+      //let fileobj = dti.getAsFile();
+      //let fileobj = null;
+      entry.file(function(fileobj) {
+          //fileobj = f;
+          var data_we_want = {"name":fileobj.name, "mru":fileobj.lastModified, "size":fileobj.size,"path":entry.fullPath}
+          fileEntries.push(data_we_want);
+        });
+      
+
+      
+
+      //fileEntries.push(entry);
+    } else if (entry.isDirectory) {
+      let reader = entry.createReader();
+      queue.push(...await readAllDirectoryEntries(reader));
     }
   }
-})
+  return fileEntries;
+}
+
+// Get all the entries (files or sub-directories) in a directory by calling readEntries until it returns empty array
+async function readAllDirectoryEntries(directoryReader) {
+  let entries = [];
+  let readEntries = await readEntriesPromise(directoryReader);
+  while (readEntries.length > 0) {
+    entries.push(...readEntries);
+    readEntries = await readEntriesPromise(directoryReader);
+  }
+  return entries;
+}
+
+// Wrap readEntries in a promise to make working with readEntries easier
+async function readEntriesPromise(directoryReader) {
+  try {
+    return await new Promise((resolve, reject) => {
+      directoryReader.readEntries(resolve, reject);
+    });
+  } catch (err) {
+    console.log(err);
+  }
+}
+
+var elDrop = document.getElementById('dropzone');
+var elItems = document.getElementById('items');
+
+elDrop.addEventListener('dragover', function (event) {
+    event.preventDefault();
+    elItems.innerHTML = 0;
+});
+
+elDrop.addEventListener('drop', async function (event) {
+    event.preventDefault();
+    let files_found = await getAllFileEntries(event.dataTransfer.items);
+    // elItems.innerHTML = 'found '+files_found.length+' items.';
+    elItems.innerHTML = JSON.stringify(files_found);
+});
+
+
 </script>

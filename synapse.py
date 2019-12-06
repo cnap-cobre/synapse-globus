@@ -121,8 +121,9 @@ def execute(debug:bool):
         extra_metadata = metadata_extractor.extract(f)
 
         tags2 = list(tags)
-        for em in extra_metadata.keys():
-            tags2.append(em +" " +extra_metadata[em])
+        if extra_metadata is not None:
+            for em in extra_metadata.keys():
+                tags2.append(em +" "+(str(extra_metadata[em])))
             
         upload.onefile(base_dv_url,dvkey,ds,f,desc,tags2)
         print("    done.")

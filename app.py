@@ -3,7 +3,7 @@ from datetime import datetime
 import re
 import globus_sdk
 import synapse
-
+from testing import generate
 
 class CustomFlask(Flask):
     jinja_options = Flask.jinja_options.copy()
@@ -23,7 +23,9 @@ if __name__ == '__main__':
 @app.route('/')
 def index():
 
-    synapse.execute(True)
+    #Script logic (testing)
+    # synapse.execute(True)
+    # generate.gen('c:\\temp\\dvdata',4,10,5000,1024*1024)
 
     """
     This could be any page you like, rendered by Flask.
@@ -133,8 +135,12 @@ def uploadGET():
 
 @app.route("/upload",methods=['POST'])
 def upload():
-
+    files_to_upload = []
     for v in request.form:
+        if 'FTO' in v:
+            file_elements_raw = request.form[v].split('~')
+            file_elements = {'NAME':file_elements_raw[0],'MRU':file_elements_raw[1],'SIZE':file_elements_raw[2]}
+            files_to_upload.append(file_elements)
         print("%s : %s" % (v,request.form[v]))
         if 'fileToUpload' in v:
              fileAttrList = v.split(",")

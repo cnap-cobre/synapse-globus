@@ -1,3 +1,4 @@
+import os
 class Metadata(object):
     
     def extract(self,filename:str):
@@ -46,7 +47,8 @@ class Travis(Metadata):
     def set_init_questions(self,questions:dict):
         self.init_questions = questions
 
-    def extract(self,filename:str):
+    def extract(self,filepath:str):
+        filename = os.path.basename(filepath)
         #Check to see if filename matches format gb104847.111:
         #   gb: refers to the experiment name (we progress down the alphabet, gb, gc, gd, etc...)
         #   1: refers to squad (we have 24 testing chambers and more than 24 rats and so they get
