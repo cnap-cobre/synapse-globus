@@ -1,19 +1,23 @@
 import sys
 import os
+import json
 from dataverse import dataset
 from dataverse import upload
 from dataverse import metadata
+from dataverse import xferjob
 print(sys.argv)
 # sys.argv[1]
 
-def execute(debug:bool):
+def execute(debug:bool, upload_via_dv_api:bool):
     beocat=1
     labType=-1
-    dvkey='9419e587-3b9b-46d6-ae41-1940d075e081'
+    # dvkey='9419e587-3b9b-46d6-ae41-1940d075e081' #demo.dataverse.org token
+    dvkey='76585908-601d-4f95-9257-75a96eab9dad' #beocat.ksu.edu dev environment
+    globus_id='gid'
     ds=None
     desc=None
     tags=None
-    files=[]
+    files=['c:\\temp\\dvdata\\5afe42c1-8a35-4dd4-98e8-f7beaa932806.116']
     for arg in sys.argv:
         if debug and (arg == 'run' or arg == '--no-debugger' or arg == '--no-reload' or '__main__.py' in arg):
             _noop = 5
@@ -79,7 +83,8 @@ def execute(debug:bool):
     if dvkey is None:
         dvkey = input("Input Dataverse token:")
 
-    base_dv_url = 'https://demo.dataverse.org'
+    # base_dv_url = 'https://demo.dataverse.org'
+    base_dv_url = 'https://elete.hosted.beocat.ksu.edu'
     existing_datasets = dataset.getList(base_dv_url,dvkey)
   
 
@@ -106,6 +111,8 @@ def execute(debug:bool):
         tags = tagsraw.split(",")
     
 
+    job = xferjob.Job(xferjob.getID(dvkey),globus_id,ds,xferjob.getFilename())
+
     print("beocat: "+str(beocat))
     print("lab: "+str(labType))
     print("dvKey: "+dvkey)
@@ -124,9 +131,19 @@ def execute(debug:bool):
         if extra_metadata is not None:
             for em in extra_metadata.keys():
                 tags2.append(em +" "+(str(extra_metadata[em])))
-            
+        file_info = os.stat(f)
+        fd = xferjob.FileData(f,file_info.st_size,file_info.st_mtime,desc,tags2)
+        job.files.append(fd)
         upload.onefile(base_dv_url,dvkey,ds,f,desc,tags2)
-        print("    done.")
-    print("Upload finished!")
+    mdcontent = json.dumps(job)
+    mdpath = 'c:\\temp\\'+job._job_id
+    f = open(mdpath,'w')
+    f.write(mdcontent)
+    f.close()
+    print('wrote metadate file to: '+mdpath)
+
+    if upload_via_dv_api:
+        upload.files(base_dv_url,dvkey,job)
+        print("Upload finished!")
 
 

@@ -3,7 +3,9 @@ from datetime import datetime
 import re
 import globus_sdk
 import synapse
+import json
 from testing import generate
+import globus
 
 class CustomFlask(Flask):
     jinja_options = Flask.jinja_options.copy()
@@ -20,32 +22,33 @@ app.config.from_pyfile('app.conf')
 if __name__ == '__main__':
     app.run()
 
+def getGlobusObj():
+    if not session.get('is_authenticated'):
+       return redirect(url_for('globus_login'))
+    authorizer = globus_sdk.AccessTokenAuthorizer(
+       session['tokens']['transfer.api.globus.org']['access_token'])
+    transfer_client = globus_sdk.TransferClient(authorizer=authorizer)
+    return transfer_client
+
 @app.route('/')
 def index():
 
     #Script logic (testing)
-    # synapse.execute(True)
+    synapse.execute(True,False)
     # generate.gen('c:\\temp\\dvdata',4,10,5000,1024*1024)
 
-    """
-    This could be any page you like, rendered by Flask.
-    For this simple example, it will either redirect you to login, or print
-    a simple message.
-    """
-    if not session.get('is_authenticated'):
-        return redirect(url_for('globus_login'))
-    authorizer = globus_sdk.AccessTokenAuthorizer(
-        session['tokens']['transfer.api.globus.org']['access_token'])
-    transfer_client = globus_sdk.TransferClient(authorizer=authorizer)
+    return redirect('/upload')
 
-    print("Endpoints recently used:")
+    # transfer_client = getGlobusObj()
+
+    print("Endpoints Available:")
     try:
-        #https://docs.globus.org/api/transfer/endpoint_search/#query_parameters
-        for ep in transfer_client.endpoint_search(filter_scope="recently-used"):
-            print("[{}] {}".format(ep["id"], ep["display_name"], ep["description"], ep["canonical_name"], ep["keywords"]))
+        globus.available_endpoints(transfer_client)
     except globus_sdk.exc.TransferAPIError as e:
         if 'Token is not active' in str(e):
             return redirect(url_for('globus_login'))
+        return "There was an error getting available Globus end points: "+str(e)
+
 
     auth2 = globus_sdk.AccessTokenAuthorizer(session['tokens']['auth.globus.org']['access_token'])
     client = globus_sdk.AuthClient(authorizer=auth2)
@@ -54,8 +57,6 @@ def index():
     # print('Effective Identity "{}" has Full Name "{}" and Email "{}"'
     #     .format(info["sub"], info["name"], info["email"]))
     return "You are successfully logged in!"
-
-
 
 @app.route('/globus_login')
 def globus_login():
@@ -131,15 +132,19 @@ def logout():
 
 @app.route("/upload")
 def uploadGET():
-    return render_template('upload.html')
+    #Get a list of available globus endpoints.
+    tc = getGlobusObj()
+    endpoints = globus.available_endpoints(tc)
+    tmp = [{'a':'AAA','b':'BBB'},{'a':'aaa','b':'bbb'},{'a':'EEE','f':'fff'}]
+    return render_template('upload.html',endpoints=endpoints)
 
 @app.route("/upload",methods=['POST'])
 def upload():
     files_to_upload = []
     for v in request.form:
-        if 'FTO' in v:
-            file_elements_raw = request.form[v].split('~')
-            file_elements = {'NAME':file_elements_raw[0],'MRU':file_elements_raw[1],'SIZE':file_elements_raw[2]}
+        if 'file_list' in v:
+            file_data = json.loads(request.form[v])
+            
             files_to_upload.append(file_elements)
         print("%s : %s" % (v,request.form[v]))
         if 'fileToUpload' in v:

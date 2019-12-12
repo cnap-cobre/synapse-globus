@@ -21,9 +21,28 @@
 <html>
    <body>
 
-      <div id="dropzone" effectAllowed="move">Drop files here!</div>
-      <ul id="items"></ul>
+      <div>
+        <h2>1. Choose Globus Source Endpoint of files:</h2> 
+        <select>
+          {% for key,value in endpoints.items() %}
+            <option value='%%key%%'>%%value["display_name"]%%</option>
+          {% endfor %}
+        </select>
 
+        
+
+        {% for item in endpoints %}
+          <h2>%% item["a"] %%</h2>
+        {% endfor %}
+
+      </div>
+
+      <div id="dropzone" effectAllowed="move">
+        <h2>Drop files / folders here, or </h2>
+      </div>
+      <input type="button" onclick="uploadFiles()" value="Upload"/>
+      <ul id="items"></ul>
+      <input type="button" onclick="uploadFiles()" value="Upload"/>
       <!-- <div id="app" v-cloak @drop.prevent="addFile" @dragover.prevent>
          <h2>Files to Upload (Drag them over)</h2>
          <ul>
@@ -170,6 +189,24 @@ elDrop.addEventListener('drop', async function (event) {
     // elItems.innerHTML = 'found '+files_found.length+' items.';
     elItems.innerHTML = JSON.stringify(files_found);
 });
+
+function uploadFiles()
+{
+      let formData = new FormData();
+      formData.append('file_list',elItems.innerHTML);
+      
+      fetch('http://localhost:5000/upload', {
+        method:'POST',
+        body: formData
+      })
+      .then(res => res.json())
+      .then(res => {
+         console.log('done uploading', res);
+      })
+      .catch(e => {
+        console.error(JSON.stringify(e.message));
+      });
+}
 
 
 </script>

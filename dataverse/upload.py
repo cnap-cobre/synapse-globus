@@ -1,6 +1,11 @@
 import os
 import json
 import requests  # http://docs.python-requests.org/en/master/
+from dataverse import xferjob
+
+def files(server, api_key, job:xferjob.Job):
+    for fd in job.files:
+        onefile(server,api_key,job.dataset_id,fd._path,fd._desc,fd._tags)
 
 def onefile(server, api_key, dataset_id,filepath,desc,cats):
     # # --------------------------------------------------
