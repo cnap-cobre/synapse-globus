@@ -37,6 +37,15 @@
 
       </div>
 
+      <div>
+        <h2>2. Pick Lab:</h2>
+        <select>
+          {% for key,value in labs.items() %}
+            <option value='%%key%%'>%%value["display_name"]%%</option>
+          {% endfor %}
+        </select>
+      </div>
+
       <div id="dropzone" effectAllowed="move">
         <h2>Drop files / folders here, or </h2>
       </div>

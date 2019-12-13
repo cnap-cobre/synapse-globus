@@ -1,11 +1,13 @@
 from flask import Flask, url_for, session, redirect, request, render_template
 from datetime import datetime
 import re
+import os
 import globus_sdk
 import synapse
 import json
-from testing import generate
 import globus
+from dataverse import xferjob
+from dataverse import metadata
 
 class CustomFlask(Flask):
     jinja_options = Flask.jinja_options.copy()
@@ -30,33 +32,52 @@ def getGlobusObj():
     transfer_client = globus_sdk.TransferClient(authorizer=authorizer)
     return transfer_client
 
-@app.route('/')
-def index():
 
-    #Script logic (testing)
-    synapse.execute(True,False)
-    # generate.gen('c:\\temp\\dvdata',4,10,5000,1024*1024)
-
-    return redirect('/upload')
-
-    # transfer_client = getGlobusObj()
-
-    print("Endpoints Available:")
+def globusDo(func, tc:globus_sdk.TransferClient):
+    if tc is None:
+        tc = getGlobusObj()
     try:
-        globus.available_endpoints(transfer_client)
+        return func(tc)
+        #globus.available_endpoints(transfer_client)
     except globus_sdk.exc.TransferAPIError as e:
         if 'Token is not active' in str(e):
             return redirect(url_for('globus_login'))
         return "There was an error getting available Globus end points: "+str(e)
-
-
     auth2 = globus_sdk.AccessTokenAuthorizer(session['tokens']['auth.globus.org']['access_token'])
     client = globus_sdk.AuthClient(authorizer=auth2)
     info = client.oauth2_userinfo()
     print(info.data)
     # print('Effective Identity "{}" has Full Name "{}" and Email "{}"'
     #     .format(info["sub"], info["name"], info["email"]))
-    return "You are successfully logged in!"
+    #return "You are successfully logged in!"
+
+@app.route('/')
+def index():
+
+    #Script logic (testing)
+    #synapse.execute(True,False)
+    # generate.gen('c:\\temp\\dvdata',4,10,5000,1024*1024)
+
+    return redirect('/upload')
+
+    # transfer_client = getGlobusObj()
+
+    # print("Endpoints Available:")
+    # try:
+    #     globus.available_endpoints(transfer_client)
+    # except globus_sdk.exc.TransferAPIError as e:
+    #     if 'Token is not active' in str(e):
+    #         return redirect(url_for('globus_login'))
+    #     return "There was an error getting available Globus end points: "+str(e)
+
+
+    # auth2 = globus_sdk.AccessTokenAuthorizer(session['tokens']['auth.globus.org']['access_token'])
+    # client = globus_sdk.AuthClient(authorizer=auth2)
+    # info = client.oauth2_userinfo()
+    # print(info.data)
+    # # print('Effective Identity "{}" has Full Name "{}" and Email "{}"'
+    # #     .format(info["sub"], info["name"], info["email"]))
+    # return "You are successfully logged in!"
 
 @app.route('/globus_login')
 def globus_login():
@@ -134,9 +155,16 @@ def logout():
 def uploadGET():
     #Get a list of available globus endpoints.
     tc = getGlobusObj()
-    endpoints = globus.available_endpoints(tc)
-    tmp = [{'a':'AAA','b':'BBB'},{'a':'aaa','b':'bbb'},{'a':'EEE','f':'fff'}]
-    return render_template('upload.html',endpoints=endpoints)
+    endpoints = globusDo(globus.available_endpoints,tc)
+    if 'Response' in str(type(endpoints)):
+        return endpoints
+    elif 'logged in' in str(endpoints):
+        return redirect('/upload')
+    #tmp = [{'a':'AAA','b':'BBB'},{'a':'aaa','b':'bbb'},{'a':'EEE','f':'fff'}]
+
+    md = metadata.Metadata()
+    labs = md.get_extractors()
+    return render_template('upload.html',endpoints=endpoints,labs=labs)
 
 @app.route("/upload",methods=['POST'])
 def upload():
@@ -154,6 +182,23 @@ def upload():
     # if uname=="ayush" and passwrd=="google":  
     return "Welcome %s" %uname  
 
+#More secure would be requestor to provide a filename + mru + filesize,
+#and webserver would find jobs with that matching file, and only return those.
+#Also restrict requests to dataverse server. IP. + debugging ip. / dyndns.
+@app.route("/pending")
+def pending():
+    # filelist = []
+    data = []
+    dir = app.config['PENDING_PATH']
+    for (dirpath,_dirnames,filenames) in os.walk(dir):
+        files = [os.path.join(dirpath,file) for file in filenames]
+        for path in files:
+            with open(path,'r') as myfile:
+                d = myfile.read()
+            job = xferjob.Job.fromJSON(d)
+            data.append(job.toDict())
+        # filelist += path
+    return json.dumps(data,indent=1)
 
 def load_app_client():
     return globus_sdk.ConfidentialAppAuthClient(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])

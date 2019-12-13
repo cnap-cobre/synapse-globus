@@ -17,7 +17,7 @@ def execute(debug:bool, upload_via_dv_api:bool):
     ds=None
     desc=None
     tags=None
-    files=['c:\\temp\\dvdata\\5afe42c1-8a35-4dd4-98e8-f7beaa932806.116']
+    files= [] #['c:\\temp\\dvdata\\5afe42c1-8a35-4dd4-98e8-f7beaa932806.116']
     for arg in sys.argv:
         if debug and (arg == 'run' or arg == '--no-debugger' or arg == '--no-reload' or '__main__.py' in arg):
             _noop = 5
@@ -54,9 +54,13 @@ def execute(debug:bool, upload_via_dv_api:bool):
 
             listOfFiles.append(f)
     
-    print("file List:")
-    for f2 in listOfFiles:
-        print(f2)
+    filecnt = len(listOfFiles)
+    if filecnt < 11:
+         print('Found '+str(filecnt)+" files:")
+         for f2 in listOfFiles:
+            print(f2)
+    else:
+        print('Found '+str(filecnt)+" files.")
 
     md = metadata.Metadata()
     extractors = md.get_extractors()
@@ -134,9 +138,9 @@ def execute(debug:bool, upload_via_dv_api:bool):
         file_info = os.stat(f)
         fd = xferjob.FileData(f,file_info.st_size,file_info.st_mtime,desc,tags2)
         job.files.append(fd)
-        upload.onefile(base_dv_url,dvkey,ds,f,desc,tags2)
-    mdcontent = json.dumps(job)
-    mdpath = 'c:\\temp\\'+job._job_id
+        # upload.onefile(base_dv_url,dvkey,ds,f,desc,tags2)
+    mdcontent = job.toJSON()
+    mdpath = 'c:\\temp\\'+job.job_id
     f = open(mdpath,'w')
     f.write(mdcontent)
     f.close()

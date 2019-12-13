@@ -48,24 +48,31 @@ class Job:
         self.job_id = job_id
 
     def toJSON(self):
+        return json.dumps(self.toDict())
+    
+    def toDict(self):
         file_list = []
         for fd in self.files:
             file_list.append(fd.toDict())
-        formatted = {'dvusrid':self.dv_user_id,'gid':self.globus_id,'dsid':self.dataset_id,'jobid':self.job_id,'filedata':file_list}
-        return json.dumps(formatted)
+        return {'dvusrid':self.dv_user_id,'gid':self.globus_id,'dsid':self.dataset_id,'jobid':self.job_id,'filedata':file_list}
 
     @staticmethod
-    def fromJSON(data):
-        dd = json.loads(data)
+    def fromDict(dd):
         j = Job(dd['dvusrid'],dd['gid'],dd['dsid'],dd['jobid'])
         for f in dd['filedata']:
             fo = FileData.fromDict(f)
             j.files.append(fo)
         return j
 
+    @staticmethod
+    def fromJSON(data):
+        dd = json.loads(data)
+        return Job.fromDict(dd)
+        
+
 def getID(dv_apiKey):
     tmp = hashlib.md5(dv_apiKey.encode('utf-8')).hexdigest()
     return tmp + '_' + dv_apiKey[:3]
 
 def getFilename():
-    return 'dvxfer_'+datetime.datetime.now().strftime('%Y%m%d')+'_'+str(uuid.uuid4)
+    return 'dvxfer_'+datetime.datetime.now().strftime('%Y%m%d')+'_'+str(uuid.uuid4())
