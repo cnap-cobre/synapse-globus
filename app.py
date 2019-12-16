@@ -37,16 +37,20 @@ def globusDo(func, tc:globus_sdk.TransferClient):
     if tc is None:
         tc = getGlobusObj()
     try:
+        if 'gid' not in session:
+            auth2 = globus_sdk.AccessTokenAuthorizer(session['tokens']['auth.globus.org']['access_token'])
+            client = globus_sdk.AuthClient(authorizer=auth2)
+            info = client.oauth2_userinfo()
+            session['gid'] = info['sub']
+            session['guser'] = info['preferred_username']
+            print(info.data)
         return func(tc)
         #globus.available_endpoints(transfer_client)
     except globus_sdk.exc.TransferAPIError as e:
         if 'Token is not active' in str(e):
             return redirect(url_for('globus_login'))
         return "There was an error getting available Globus end points: "+str(e)
-    auth2 = globus_sdk.AccessTokenAuthorizer(session['tokens']['auth.globus.org']['access_token'])
-    client = globus_sdk.AuthClient(authorizer=auth2)
-    info = client.oauth2_userinfo()
-    print(info.data)
+    
     # print('Effective Identity "{}" has Full Name "{}" and Email "{}"'
     #     .format(info["sub"], info["name"], info["email"]))
     #return "You are successfully logged in!"
@@ -164,11 +168,24 @@ def uploadGET():
 
     md = metadata.Metadata()
     labs = md.get_extractors()
-    return render_template('upload.html',endpoints=endpoints,labs=labs)
+    guser = session['guser']
+    dvkey = ''
+    if 'dvkey' in session:
+        dvkey = session['dvkey']
+        dvkey = "*" + dvkey[-4:]
+    return render_template('upload.html',endpoints=endpoints,labs=labs, guser=guser,dvkey=dvkey)
 
 @app.route("/upload",methods=['POST'])
 def upload():
     files_to_upload = []
+
+    settings = {}
+    settings['labid'] = request.form['labid']
+    settings['dvkey'] = request.form['dvkey']
+    settings['gid'] = session['guser']
+    settings['mruEndpointID'] = request.form['selected_endpoint']
+    session['dvkey'] = request.form['dvkey']
+
     for v in request.form:
         if 'file_list' in v:
             file_data = json.loads(request.form[v])
