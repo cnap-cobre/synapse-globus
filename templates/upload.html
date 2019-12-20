@@ -35,7 +35,7 @@
         <h2>1. Choose Globus Source Endpoint of files:</h2> 
         <select id="endpoints">
           {% for key,value in endpoints.items() %}
-            <option value='%%key%%'>%%value["display_name"]%%</option>
+            <option {% if mruEndpointID == key %} selected='selected' {% endif %} value='%%key%%'>%%value["display_name"]%%</option>
           {% endfor %}
         </select>
       </div>
@@ -44,7 +44,7 @@
         <h2>2. Pick Lab:</h2>
         <select  id="lab_type">
           {% for key,value in labs.items() %}
-            <option value='%%value.id_num()%%'>%%value.display_name()%%</option>
+            <option {% if mruLab == value.id_num() %} selected='selected' {% endif %} value='%%value.id_num()%%'>%%value.display_name()%%</option>
           {% endfor %}
         </select>
       </div>
@@ -133,38 +133,54 @@
 
 // Drop handler function to get all files
 async function getAllFileEntries(dataTransferItemList) {
+  //console.debug("inside get all files.");
   let fileEntries = [];
   // Use BFS to traverse entire directory/file structure
   let queue = [];
   // Unfortunately dataTransferItemList is not iterable i.e. no forEach
-  for (let i = 0; i < dataTransferItemList.length; i++) {
+  for (let i = 0; i < dataTransferItemList.length; i++)
+  {
      let fo = dataTransferItemList[i].getAsFile();
-     console.debug(fo.size);
+     //console.debug(fo.size);
      queue.push(dataTransferItemList[i].webkitGetAsEntry());
     //queue.push(dataTransferItemList[i]);
   }
+  
+  let filesToProcess = 0
+
   while (queue.length > 0) {
+    //console.debug('Queue Length: '+queue.length);
     //let dti = queue.shift();
     //let entry = dti.webkitGetAsEntry();
     let entry = queue.shift();
-    if (entry.isFile) {
+    //console.debug('queue shift');
+    if (entry.isFile)
+    {
       //let fileobj = dti.getAsFile();
       //let fileobj = null;
-      entry.file(function(fileobj) {
+      //console.debug('right before entry.file.');
+      filesToProcess +=1;
+      entry.file(function(fileobj)
+      {
           //fileobj = f;
           var data_we_want = {"name":fileobj.name, "mru":fileobj.lastModified, "size":fileobj.size,"path":entry.fullPath}
+          //console.debug(data_we_want);
           fileEntries.push(data_we_want);
-        });
+          filesToProcess -= 1;
+      },function(){console.debug('err');filesToProcess -=1;});
       
-
-      
-
       //fileEntries.push(entry);
-    } else if (entry.isDirectory) {
+    }
+    else if (entry.isDirectory)
+    {
+      //console.debug('found dir.')
       let reader = entry.createReader();
       queue.push(...await readAllDirectoryEntries(reader));
     }
   }
+  //We need to wait for all the callbacks to complete.
+  while (filesToProcess > 0) {await new Promise(r => setTimeout(r,500));}
+  //console.debug('End of getAllFileEntries length: '+fileEntries.length);
   return fileEntries;
 }
 
@@ -200,8 +216,10 @@ elDrop.addEventListener('dragover', function (event) {
 
 elDrop.addEventListener('drop', async function (event) {
     event.preventDefault();
+    console.debug(event);
     let files_found = await getAllFileEntries(event.dataTransfer.items);
-    elItems.innerHTML = 'found '+files_found.length+' items.';
+    console.debug('found '+files_found.length+'...');
+    //elItems.innerHTML = 'found '+files_found.length+' items, Yo!';
     elItems.innerHTML = JSON.stringify(files_found);
 });
 

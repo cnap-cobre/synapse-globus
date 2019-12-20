@@ -8,6 +8,7 @@ import json
 import globus
 from dataverse import xferjob
 from dataverse import metadata
+import usr
 
 class CustomFlask(Flask):
     jinja_options = Flask.jinja_options.copy()
@@ -37,16 +38,16 @@ def globusDo(func, tc:globus_sdk.TransferClient):
     if tc is None:
         tc = getGlobusObj()
     try:
-        if 'gid' not in session:
+        if (usr.settings.GLOBUS_ID not in session) or (len(session[usr.settings.GLOBUS_ID]) < 5):
             auth2 = globus_sdk.AccessTokenAuthorizer(session['tokens']['auth.globus.org']['access_token'])
             client = globus_sdk.AuthClient(authorizer=auth2)
             info = client.oauth2_userinfo()
-            session['gid'] = info['sub']
-            session['guser'] = info['preferred_username']
+            session[usr.settings.GLOBUS_ID] = info['sub']
+            session[usr.settings.GLOBUS_USER] = info['preferred_username']
             print(info.data)
         return func(tc)
         #globus.available_endpoints(transfer_client)
-    except globus_sdk.exc.TransferAPIError as e:
+    except (globus_sdk.exc.TransferAPIError, KeyError) as e:
         if 'Token is not active' in str(e):
             return redirect(url_for('globus_login'))
         return "There was an error getting available Globus end points: "+str(e)
@@ -159,6 +160,8 @@ def logout():
 def uploadGET():
     #Get a list of available globus endpoints.
     tc = getGlobusObj()
+    if 'Response' in str(type(tc)):
+        return tc
     endpoints = globusDo(globus.available_endpoints,tc)
     if 'Response' in str(type(endpoints)):
         return endpoints
@@ -166,26 +169,32 @@ def uploadGET():
         return redirect('/upload')
     #tmp = [{'a':'AAA','b':'BBB'},{'a':'aaa','b':'bbb'},{'a':'EEE','f':'fff'}]
 
+
+  
+    #load MRU settings if existant.
+    usr.load(app.config['USER_SETTINGS_PATH'],session)
+
+
+
     md = metadata.Metadata()
     labs = md.get_extractors()
-    guser = session['guser']
     dvkey = ''
-    if 'dvkey' in session:
-        dvkey = session['dvkey']
-        dvkey = "*" + dvkey[-4:]
-    return render_template('upload.html',endpoints=endpoints,labs=labs, guser=guser,dvkey=dvkey)
+    if len(session[usr.settings.DV_KEY]) > 4:
+        dvkey = "*" + session[usr.settings.DV_KEY][-4:]
+    return render_template('upload.html',endpoints=endpoints,mruEndpointID=session[usr.settings.SRC_ENDPOINT],labs=labs,mruLab=session[usr.settings.LAB_ID], guser=session[usr.settings.GLOBUS_USER],dvkey=dvkey)
 
 @app.route("/upload",methods=['POST'])
 def upload():
     files_to_upload = []
 
-    settings = {}
-    settings['labid'] = request.form['labid']
-    settings['dvkey'] = request.form['dvkey']
-    settings['gid'] = session['guser']
-    settings['mruEndpointID'] = request.form['selected_endpoint']
-    session['dvkey'] = request.form['dvkey']
-
+    session[usr.settings.LAB_ID] = request.form['labid']
+    session[usr.settings.DV_KEY] = request.form['dvkey']
+    session[usr.settings.GLOBUS_USER] = session['guser']
+    session[usr.settings.SRC_ENDPOINT] = request.form['selected_endpoint']
+    
+    #save MRU settings
+    usr.updateDisk(app.config['USER_SETTINGS_PATH'],session)
+    
     for v in request.form:
         if 'file_list' in v:
             file_data = json.loads(request.form[v])
