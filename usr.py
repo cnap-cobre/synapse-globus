@@ -7,9 +7,10 @@ class settings():
     GLOBUS_USER = 'GLOBUS_USER'
     GLOBUS_ID = 'GLOBUS_ID'
     SRC_ENDPOINT = 'SRC_ENDPOINT'
+    DATASET_ID = 'DATASET_ID'
 
 def defaultVals():
-    return {settings.LAB_ID:'0',settings.DV_KEY:'',settings.SRC_ENDPOINT:''}
+    return {settings.LAB_ID:'0',settings.DV_KEY:'',settings.SRC_ENDPOINT:'',settings.DATASET_ID:'0'}
 
 
 def _getVars():
@@ -41,7 +42,7 @@ def load(path:str, session):
         try:
             fr = open(op,'r')
             vals = json.loads(fr.read())
-            for key,val in vals:
+            for key,val in vals.items():
                 session[key] = val
             fr.close()
         except:

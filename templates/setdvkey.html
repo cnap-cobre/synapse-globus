@@ -1,0 +1,27 @@
+<html>
+   <body>
+
+      <div>
+        Current Globus ID: %%guser%% <a href="globus_logout">Change</a>
+      </div>
+
+      <div>
+        <h2>%%status_msg%%</h2>
+        <h2>Please update your Dataverse key:</h2>
+        <input id="dvkey" type="text" style="width: 250px;" name="dvkey" value="%%dvkey%%"> <a href="">How?</a>
+      </div>
+      <input type="button" onclick="submitKey()" value="Update"/>
+   </body>
+</html>
+
+<script>
+function submitKey()
+{
+      let formData = new FormData();
+      formData.append('dvkey',document.getElementById("dvkey").value)
+      fetch('http://localhost:5000/updatedvkey', {
+        method:'POST',
+        body: formData
+      });
+}
+</script>

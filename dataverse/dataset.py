@@ -1,6 +1,9 @@
 import json
 import requests
 
+class AuthError(Exception):
+    pass
+
 def getList(server, apikey):
     existing_datasets = []
     alreadyCollected = []
@@ -24,6 +27,13 @@ def getList(server, apikey):
                     tmpds['entity_id'] = item['entity_id']
                     existing_datasets.append(tmpds)
                     alreadyCollected.append(item['entity_id'])
+        else:
+            if 'Please login' in j['error_message']:
+                raise AuthError(j['error_message'])
+            elif 'nothing was found for this role' in j['error_message']:
+                pass
+            else:
+                raise Exception('Error Getting Dataset list: '+j['error_message'])
     return existing_datasets
 
 def makeNew(server, apiKey, title, author, contact, description, subject):

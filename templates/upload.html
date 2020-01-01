@@ -18,17 +18,14 @@
     </body>  
  </html>   -->
 
-<html>
-   <body>
-
+{% extends 'base.html' %}
+{% block container %}
       <div>
-        <h2>Using Globus ID</h2>
-        %%guser%% <a href="globus_logout">Change</a>
+        Using Globus ID %%guser%% <a href="globus_logout">Change</a>
       </div>
 
       <div>
-        <h2>Using Dataverse Key</h2>
-        <input id="dvkey" type="text" style="width: 250px;" name="dvkey" value="%%dvkey%%"> <a href="">What's this?</a>
+        Using Dataverse Key %%dvkey%% <a href="setdvkey">Change</a>
       </div>
 
       <div>
@@ -47,6 +44,28 @@
             <option {% if mruLab == value.id_num() %} selected='selected' {% endif %} value='%%value.id_num()%%'>%%value.display_name()%%</option>
           {% endfor %}
         </select>
+      </div>
+
+      <div>
+        <h2>3. Upload data to this dataset:</h2>
+        <select  id="dataset_id">
+          {% for rec in datasets %}
+            <option {% if mruDataset == rec['entity_id'] %} selected='selected' {% endif %} value='%%rec['entity_id']%%'>%%rec['name']%%</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <h2>4. (Optional) Please enter a search-able description to apply to each file:</h2>
+        <textarea id="description" rows="5", cols="60">
+          Enter details here...
+        </textarea><br>
+        Note: If you have selected a lab in step 2, Information found in the directory / file name of each file will be automatically added to the description.
+      </div>
+
+      <div>
+        <h2>5. (Optional) Please enter any relevant keywords (separated by commas) to apply to each file:</h2>
+        <input type="text" id="tags"/>
       </div>
 
       <div id="dropzone" effectAllowed="move">
@@ -68,9 +87,7 @@
          
          <button :disabled="uploadDisabled" @click="upload">Upload</button>
       </div> -->
-   </body>
-</html>
-
+   
 <script>
 // Vue.config.productionTip = false;
 // Vue.config.devtools = false;
@@ -242,6 +259,6 @@ function uploadFiles()
         console.error(JSON.stringify(e.message));
       });
 }
-
-
 </script>
+
+{% endblock %}

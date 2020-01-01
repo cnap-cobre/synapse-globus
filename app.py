@@ -8,6 +8,7 @@ import json
 import globus
 from dataverse import xferjob
 from dataverse import metadata
+from dataverse import dataset
 import usr
 
 class CustomFlask(Flask):
@@ -19,6 +20,8 @@ class CustomFlask(Flask):
 
 # app = Flask(__name__)
 app = CustomFlask(__name__)
+app._static_folder = 'static'
+app._static_url_path = ''
 app.config.from_pyfile('app.conf')
 
 # Run the app if called via script
@@ -158,6 +161,7 @@ def logout():
 
 @app.route("/upload")
 def uploadGET():
+  
     #Get a list of available globus endpoints.
     tc = getGlobusObj()
     if 'Response' in str(type(tc)):
@@ -169,45 +173,106 @@ def uploadGET():
         return redirect('/upload')
     #tmp = [{'a':'AAA','b':'BBB'},{'a':'aaa','b':'bbb'},{'a':'EEE','f':'fff'}]
 
-
-  
     #load MRU settings if existant.
     usr.load(app.config['USER_SETTINGS_PATH'],session)
+
+    dvkey = ''
+    if len(session[usr.settings.DV_KEY]) < 4:
+        return redirect('/setdvkey?msg=Please_enter_a_valid_Dataverse_key')
+    dvkey = session[usr.settings.DV_KEY]
+    dvkey_masked = "*" + session[usr.settings.DV_KEY][-4:]
 
 
 
     md = metadata.Metadata()
     labs = md.get_extractors()
+    datasets = []
+    try:
+        datasets = dataset.getList(app.config['BASE_DV_URL'],dvkey)
+    except dataset.AuthError as ae:
+        return redirect('/setdvkey?msg=Invalid_key')
+    datasets.insert(0,{'name':'New Dataset...','entity_id':'0'})
+
+   
+    return render_template('upload.html',endpoints=endpoints,mruEndpointID=session[usr.settings.SRC_ENDPOINT],labs=labs,mruLab=session[usr.settings.LAB_ID], guser=session[usr.settings.GLOBUS_USER],dvkey=dvkey_masked,datasets=datasets,mruDataset=session[usr.settings.DATASET_ID])
+
+@app.route('/updatedvkey',methods=['POST'])
+def updateDVKey():
+    key = request.form['dvkey']
+    if "*" + session[usr.settings.DV_KEY][-4:] != key:
+        session[usr.settings.DV_KEY] = request.form['dvkey']
+        usr.updateDisk(app.config['USER_SETTINGS_PATH'],session)
+    return redirect('/upload',)
+
+@app.route('/setdvkey')
+def setDVKey():
+    msg = ''
+    if 'msg' in request.args:
+        msg = request.args.get('msg')
     dvkey = ''
     if len(session[usr.settings.DV_KEY]) > 4:
         dvkey = "*" + session[usr.settings.DV_KEY][-4:]
-    return render_template('upload.html',endpoints=endpoints,mruEndpointID=session[usr.settings.SRC_ENDPOINT],labs=labs,mruLab=session[usr.settings.LAB_ID], guser=session[usr.settings.GLOBUS_USER],dvkey=dvkey)
+    return render_template('setdvkey.html',guser=session[usr.settings.GLOBUS_USER],dvkey=dvkey,status_msg=msg)
+
+    
 
 @app.route("/upload",methods=['POST'])
 def upload():
     files_to_upload = []
 
-    session[usr.settings.LAB_ID] = request.form['labid']
-    session[usr.settings.DV_KEY] = request.form['dvkey']
-    session[usr.settings.GLOBUS_USER] = session['guser']
+    # session[usr.settings.DV_KEY] = request.form['dvkey']
+    # session[usr.settings.GLOBUS_USER] = session['guser']
     session[usr.settings.SRC_ENDPOINT] = request.form['selected_endpoint']
+    session[usr.settings.LAB_ID] = request.form['lab_type']
+    session[usr.settings.DATASET_ID] = request.form['dataset_id']
     
     #save MRU settings
     usr.updateDisk(app.config['USER_SETTINGS_PATH'],session)
     
+    job = xferjob.Job(xferjob.getID(session[usr.settings.DV_KEY]),session[usr.settings.GLOBUS_ID],session[usr.settings.DATASET_ID],xferjob.getFilename())
+
+    desc = request.form['description']
+    tags = request.form['tags'].split(',')
+
+    #Handle metadata
+    md = metadata.Metadata()
+    extractors = md.get_extractors()
+    metadata_extractor = extractors[session[usr.settings.LAB_ID]]
+    qs = metadata_extractor.get_init_questions()
+    answers = {}
+    for question in qs:
+        answers[question] = input(question)
+    metadata_extractor.set_init_questions(answers)
+
     for v in request.form:
         if 'file_list' in v:
             file_data = json.loads(request.form[v])
-            
-            files_to_upload.append(file_elements)
-        print("%s : %s" % (v,request.form[v]))
-        if 'fileToUpload' in v:
-             fileAttrList = v.split(",")
-    uname=request.form['file1']  
-    passwrd=request.form['pass']  
-    # if uname=="ayush" and passwrd=="google":  
-    return "Welcome %s" %uname  
+            for fe in file_data:
+                fn = fe['name']
+                path = fe['path']
+                mru = fe['mru']
+                sz = fe['size']
 
+                extra_metadata = metadata_extractor.extract(fn)
+
+                tags2 = list(tags)
+                if extra_metadata is not None:
+                    for em in extra_metadata.keys():
+                        tags2.append(em +" "+(str(extra_metadata[em])))
+
+                fd = xferjob.FileData(path,sz,mru,desc,tags2)
+                job.files.append(fd)
+            mdcontent = job.toJSON()
+            mdpath = 'c:\\temp\\'+job.job_id
+            f = open(mdpath,'w')
+            f.write(mdcontent)
+            f.close()
+
+            if app.config['UPLOAD_VIA_DV']:
+                upload.files(app.config['BASE_DV_URL'],session[usr.settings.DV_KEY],job)
+                print("Upload finished!")
+
+           
 #More secure would be requestor to provide a filename + mru + filesize,
 #and webserver would find jobs with that matching file, and only return those.
 #Also restrict requests to dataverse server. IP. + debugging ip. / dyndns.

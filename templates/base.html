@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+   
+    <link rel="shortcut icon" href="%% url_for('static', filename='favicon_96_PxV_icon.ico') %%" type="image/x-icon">
+    <link rel="icon" href="%% url_for('static', filename='favicon-96.png') %%" sizes="96x96" type="image/png">
+
+    <title>Synapse</title>
+
+    <style type="text/css">
+        body {
+            background-image: url("%% url_for('static', filename='anderson-hall-blur.jpg') %%");
+            background-repeat: no-repeat;
+            background-size:cover;
+        }
+
+        div.header {
+        font-family: Arial, Helvetica, sans-serif ;
+		font-size: 3.1em ;
+		width: 730px ;
+		padding: 10px ;
+		background-color: transparent ;
+		color: white ;
+        border: 0px solid black ;
+        vertical-align: middle;
+        display: -webkit-flex;
+        display: flex;
+        align-items: center;
+        }
+      
+        div.container {
+		font-family: Arial, Helvetica, sans-serif ;
+		font-size: 1.1em ;
+		width: 730px ;
+		margin-left: auto ;
+		margin-right: auto ;
+		padding: 20px ;
+		background-color: white ;
+		color: black ;
+        border: 1px solid black ;
+        border-radius: 16px ;
+	}
+
+    </style>
+
+  </head>
+  <body>
+    <div class="header">
+        <img width="75" height="75" src="%% url_for('static', filename='synapse_logo.png') %%"> &nbsp; Synapse
+    </div>
+    <noscript>
+      You need to enable JavaScript to run this app.
+    </noscript>
+    <div class="container">
+        {% block container %}{% endblock %}
+    </div>
+  </body>
+</html>
