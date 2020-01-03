@@ -9,6 +9,7 @@ import globus
 from dataverse import xferjob
 from dataverse import metadata
 from dataverse import dataset
+from dataverse import upload
 import usr
 
 class CustomFlask(Flask):
@@ -217,7 +218,7 @@ def setDVKey():
     
 
 @app.route("/upload",methods=['POST'])
-def upload():
+def uploadPOST():
     files_to_upload = []
 
     # session[usr.settings.DV_KEY] = request.form['dvkey']
@@ -237,12 +238,12 @@ def upload():
     #Handle metadata
     md = metadata.Metadata()
     extractors = md.get_extractors()
-    metadata_extractor = extractors[session[usr.settings.LAB_ID]]
+    metadata_extractor = extractors[int(session[usr.settings.LAB_ID])]
     qs = metadata_extractor.get_init_questions()
     answers = {}
-    for question in qs:
-        answers[question] = input(question)
-    metadata_extractor.set_init_questions(answers)
+    # for question in qs:
+    #     answers[question] = input(question)
+    # metadata_extractor.set_init_questions(answers)
 
     for v in request.form:
         if 'file_list' in v:

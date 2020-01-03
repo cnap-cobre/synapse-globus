@@ -34,4 +34,3 @@ def new_share(tc:globus_sdk.TransferClient,globus_usr:str):
         'organization': 'Kansas State University - Dataverse'
     }
     tc.create_shared_endpoint(newEP)
-    

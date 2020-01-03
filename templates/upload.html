@@ -75,7 +75,8 @@
         </h2>
       </div>
       <input type="button" onclick="uploadFiles()" value="Upload"/>
-      <ul id="items"></ul>
+      <ul id="items" hidden></ul>
+      <ul id="lbl_status"></ul>
       <input type="button" onclick="uploadFiles()" value="Upload"/>
       <!-- <div id="app" v-cloak @drop.prevent="addFile" @dragover.prevent>
          <h2>Files to Upload (Drag them over)</h2>
@@ -225,6 +226,7 @@ async function readEntriesPromise(directoryReader) {
 
 var elDrop = document.getElementById('dropzone');
 var elItems = document.getElementById('items');
+var elStatus = document.getElementById('lbl_status');
 
 elDrop.addEventListener('dragover', function (event) {
     event.preventDefault();
@@ -236,7 +238,7 @@ elDrop.addEventListener('drop', async function (event) {
     console.debug(event);
     let files_found = await getAllFileEntries(event.dataTransfer.items);
     console.debug('found '+files_found.length+'...');
-    //elItems.innerHTML = 'found '+files_found.length+' items, Yo!';
+    elStatus.innerHTML = 'Found '+files_found.length+' items.';
     elItems.innerHTML = JSON.stringify(files_found);
 });
 
@@ -244,9 +246,11 @@ function uploadFiles()
 {
       let formData = new FormData();
       formData.append('file_list',elItems.innerHTML);
-      formData.append('dvkey',document.getElementById("dvkey").value)
-      formData.append('labid',document.getElementById("lab_type").value)
+      formData.append('lab_type',document.getElementById("lab_type").value)
       formData.append('selected_endpoint',document.getElementById("endpoints").value)
+      formData.append('dataset_id',document.getElementById("dataset_id").value);
+      formData.append('description',document.getElementById("description").value);
+      formData.append('tags',document.getElementById("tags").value);
       fetch('http://localhost:5000/upload', {
         method:'POST',
         body: formData

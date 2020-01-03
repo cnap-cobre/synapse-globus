@@ -1,0 +1,18 @@
+{
+    "displayName": "Send To Beocat",
+    "description": "Sends selected files / datasets to user's beocat account.",
+    "scope": "file",
+    "type": "explore",
+    "toolUrl": "https://localhost:5000/tobeocat",
+    "contentType": "text/tab-separated-values",
+    "toolParameters": {
+      "queryParameters": [
+        {
+          "fileid": "{fileId}"
+        },
+        {
+          "key": "{apiToken}"
+        }
+      ]
+    }
+  }

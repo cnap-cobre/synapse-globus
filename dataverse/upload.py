@@ -5,7 +5,7 @@ from dataverse import xferjob
 
 def files(server, api_key, job:xferjob.Job):
     for fd in job.files:
-        onefile(server,api_key,job.dataset_id,fd._path,fd._desc,fd._tags)
+        onefile(server,api_key,job.dataset_id,fd.path,fd.desc,fd.tags)
 
 def onefile(server, api_key, dataset_id,filepath,desc,cats):
     # # --------------------------------------------------
