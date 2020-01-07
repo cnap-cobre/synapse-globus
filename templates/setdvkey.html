@@ -1,5 +1,5 @@
-<html>
-   <body>
+{% extends 'base.html' %}
+{% block container %}
 
       <div>
         Current Globus ID: %%guser%% <a href="globus_logout">Change</a>
@@ -25,3 +25,4 @@ function submitKey()
       });
 }
 </script>
+{% endblock %}

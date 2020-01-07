@@ -1,5 +1,6 @@
 import globus_sdk
 import os
+from pathlib import Path
 def available_endpoints(tc:globus_sdk.TransferClient):
     result = {}
     filters = ["recently-used","my-gcp-endpoints","my-endpoints","administered-by-me","shared-with-me"]
@@ -34,3 +35,15 @@ def new_share(tc:globus_sdk.TransferClient,globus_usr:str):
         'organization': 'Kansas State University - Dataverse'
     }
     tc.create_shared_endpoint(newEP)
+
+def transfer(tc:globus_sdk.TransferClient,srcEP, destEP,srcPathDir,destPathDir):
+    srcPathDir = Path(str(srcPathDir).replace(":",""))
+    destPathDir = Path(str(destPathDir).replace(":",""))
+
+    
+    tdata = globus_sdk.TransferData(tc,srcEP,destEP,label='Synapse generated, from Dataverse',sync_level='mtime',preserve_timestamp=True)
+    tdata.add_item(srcPathDir,destPathDir,recursive=True)
+    tresult = tc.submit_transfer(tdata)
+    print('task_id='+tresult['task_id'])
+    return tresult
+

@@ -8,14 +8,14 @@ class FileData:
     mru = 0
     desc = ''
     tags = []
-
+    
     def __init__(self,filepath:str,filesize:int,filemru:int,filedesc:str,tag_data):
         self.path = filepath
         self.size = filesize
         self.mru = filemru
         self.desc = filedesc
         self.tags = tag_data
-
+      
     def toJSON(self):
         formatted = self.toDict()
         return json.dumps(formatted)

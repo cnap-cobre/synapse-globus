@@ -1,0 +1,24 @@
+{
+"displayName": "Send To Beocat",
+"description": "Sends selected files or datasets to user's beocat account.",
+"scope": "file",
+"type": "explore",
+"toolUrl": "https://localhost:5000/tobeocat",
+"contentType": "text/csv",
+"toolParameters": {
+    "queryParameters": [
+     {	
+        "fileId": "{fileId}"	
+     },	
+     {	
+       "siteUrl": "{siteUrl}"	
+     },	
+     {	
+       "key": "{apiToken}"	
+     },
+     {
+       "dvLocale": "{localeCode}"
+     }
+    ]
+  }
+}

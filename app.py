@@ -10,7 +10,11 @@ from dataverse import xferjob
 from dataverse import metadata
 from dataverse import dataset
 from dataverse import upload
+from dataverse import download
+from pathlib import Path
 import usr
+import zipfile
+
 
 class CustomFlask(Flask):
     jinja_options = Flask.jinja_options.copy()
@@ -160,6 +164,7 @@ def logout():
     # Redirect the user to the Globus Auth logout page
     return redirect(globus_logout_url)
 
+
 @app.route("/upload")
 def uploadGET():
   
@@ -175,14 +180,14 @@ def uploadGET():
     #tmp = [{'a':'AAA','b':'BBB'},{'a':'aaa','b':'bbb'},{'a':'EEE','f':'fff'}]
 
     #load MRU settings if existant.
-    usr.load(app.config['USER_SETTINGS_PATH'],session)
+    usr.load(Path(app.config['USER_SETTINGS_PATH']),session)
 
     dvkey = ''
     if len(session[usr.settings.DV_KEY]) < 4:
         return redirect('/setdvkey?msg=Please_enter_a_valid_Dataverse_key')
     dvkey = session[usr.settings.DV_KEY]
     dvkey_masked = "*" + session[usr.settings.DV_KEY][-4:]
-
+    session[usr.settings.DV_KEY_MASKED] = "*" + session[usr.settings.DV_KEY][-4:]
 
 
     md = metadata.Metadata()
@@ -202,7 +207,7 @@ def updateDVKey():
     key = request.form['dvkey']
     if "*" + session[usr.settings.DV_KEY][-4:] != key:
         session[usr.settings.DV_KEY] = request.form['dvkey']
-        usr.updateDisk(app.config['USER_SETTINGS_PATH'],session)
+        usr.updateDisk(Path(app.config['USER_SETTINGS_PATH']),session)
     return redirect('/upload',)
 
 @app.route('/setdvkey')
@@ -228,7 +233,7 @@ def uploadPOST():
     session[usr.settings.DATASET_ID] = request.form['dataset_id']
     
     #save MRU settings
-    usr.updateDisk(app.config['USER_SETTINGS_PATH'],session)
+    usr.updateDisk(Path(app.config['USER_SETTINGS_PATH']),session)
     
     job = xferjob.Job(xferjob.getID(session[usr.settings.DV_KEY]),session[usr.settings.GLOBUS_ID],session[usr.settings.DATASET_ID],xferjob.getFilename())
 
@@ -253,7 +258,6 @@ def uploadPOST():
                 path = fe['path']
                 mru = fe['mru']
                 sz = fe['size']
-
                 extra_metadata = metadata_extractor.extract(fn)
 
                 tags2 = list(tags)
@@ -264,16 +268,70 @@ def uploadPOST():
                 fd = xferjob.FileData(path,sz,mru,desc,tags2)
                 job.files.append(fd)
             mdcontent = job.toJSON()
-            mdpath = 'c:\\temp\\'+job.job_id
+          
+            mdpath = Path('c:/temp/') / (job.job_id+'.json')
             f = open(mdpath,'w')
             f.write(mdcontent)
             f.close()
 
             if app.config['UPLOAD_VIA_DV']:
-                upload.files(app.config['BASE_DV_URL'],session[usr.settings.DV_KEY],job)
+                upload.files(app.config['BASE_DV_URL'],session[usr.settings.DV_KEY],job,Path('c:/temp/dvdata'))
                 print("Upload finished!")
 
-           
+
+@app.route("/tobeocat")
+def toBeocat():
+    if 'fileId' in request.args:
+        session[usr.settings.DV_FILE_ID] = request.args['fileId']
+    elif 'dataSetId' in request.args:
+        session[usr.settings.DV_DATASET_ID] = int(request.args['dataSetId'])
+
+
+    destEndpoint = app.config['BEOCAT_GLOBUS_ENDPOINT_ID']
+
+   #Get a list of available globus endpoints.
+    tc = getGlobusObj()
+    if 'Response' in str(type(tc)):
+        return tc
+    endpoints = globusDo(globus.available_endpoints,tc)
+    if 'Response' in str(type(endpoints)):
+        return endpoints
+    elif 'logged in' in str(endpoints):
+        return redirect('/tobeocat')
+    #tmp = [{'a':'AAA','b':'BBB'},{'a':'aaa','b':'bbb'},{'a':'EEE','f':'fff'}]
+
+    if endpoints[destEndpoint]['activated'] == False:
+        #Endpoint isn't activated. Re-direct.
+        return redirect('https://app.globus.org/file-manager?destination_id='+destEndpoint+'&origin_id='+app.config['MUSTER_GLOBUS_ENDPOINT_ID']+'&origin_path=%2F~%2F'+destEndpoint)
+    #load MRU settings if existant.
+    usr.load(Path(app.config['USER_SETTINGS_PATH']),session)
+
+    #OK, now let's pull the data via the dataverse API, and put it on Globus.
+    files = []
+    files.append(session[usr.settings.DV_FILE_ID])
+    zipPath = Path(app.config['PENDING_PATH']) / 'PENDING.zip'
+
+    msg = 'Not yet ran.'
+
+    try:
+        download.files(app.config['BASE_DV_URL'],session[usr.settings.DV_KEY],files,zipPath)
+        with zipfile.ZipFile(zipPath,'r') as zip_ref:
+            zip_ref.extractall(Path(app.config['PENDING_PATH']))
+        os.remove(zipPath)
+    except BaseException as be:
+        msg = 'Error Staging Files to Beocat: ' + str(be)
+        print(msg)
+        
+    try:
+        xfer_result = globus.transfer(tc,app.config['MUSTER_GLOBUS_ENDPOINT_ID'],destEndpoint,app.config['PENDING_PATH'],'FromDataverse')
+    except globus_sdk.exc.TransferAPIError as te:
+        if '409' in str(te): #Expired Credentials for the endpoint. Need to re-activate
+             return redirect('https://app.globus.org/file-manager?destination_id='+destEndpoint+'&origin_id='+app.config['MUSTER_GLOBUS_ENDPOINT_ID']+'&origin_path=%2F~%2F'+destEndpoint)
+    print(xfer_result)
+    msg = str(xfer_result)
+    return render_template('toBeocat.html',endpoints=endpoints,mruEndpointID=destEndpoint,guser=session[usr.settings.GLOBUS_USER],dvkey=session[usr.settings.DV_KEY],status_msg=msg)
+
+
 #More secure would be requestor to provide a filename + mru + filesize,
 #and webserver would find jobs with that matching file, and only return those.
 #Also restrict requests to dataverse server. IP. + debugging ip. / dyndns.
@@ -281,11 +339,11 @@ def uploadPOST():
 def pending():
     # filelist = []
     data = []
-    dir = app.config['PENDING_PATH']
+    dir = Path(app.config['PENDING_PATH'])
     for (dirpath,_dirnames,filenames) in os.walk(dir):
-        files = [os.path.join(dirpath,file) for file in filenames]
-        for path in files:
-            with open(path,'r') as myfile:
+        files = [Path(dirpath) / file for file in filenames]
+        for p in files:
+            with open(p,'r') as myfile:
                 d = myfile.read()
             job = xferjob.Job.fromJSON(d)
             data.append(job.toDict())

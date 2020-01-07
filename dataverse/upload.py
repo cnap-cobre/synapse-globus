@@ -2,10 +2,13 @@ import os
 import json
 import requests  # http://docs.python-requests.org/en/master/
 from dataverse import xferjob
-
-def files(server, api_key, job:xferjob.Job):
+from pathlib import Path
+def files(server, api_key, job:xferjob.Job, rootPath:Path):
     for fd in job.files:
-        onefile(server,api_key,job.dataset_id,fd.path,fd.desc,fd.tags)
+        if fd.path[0] == '/':
+            fd.path = fd.path[1:]
+        filePath = rootPath / fd.path
+        onefile(server,api_key,job.dataset_id,filePath,fd.desc,fd.tags)
 
 def onefile(server, api_key, dataset_id,filepath,desc,cats):
     # # --------------------------------------------------
