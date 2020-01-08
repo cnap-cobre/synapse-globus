@@ -68,10 +68,10 @@ class Travis(Metadata):
         
         result = {}
         result['experiment'] = filename[0:1]
-        result['squad'] = filename[2:3]
-        result['batch'] = filename[3:6]
-        result['subject_id'] = filename[6:8]
-        result['session'] = session
+        result['squad'] = int(filename[2:3])
+        result['batch'] = int(filename[3:6])
+        result['subject_id'] = int(filename[6:8])
+        result['session'] = int(session)
 
         if self.EXPERIMENT_NAME in self.init_questions:
             result['experiment'] = self.init_questions[self.EXPERIMENT_NAME]

@@ -261,11 +261,13 @@ def uploadPOST():
                 extra_metadata = metadata_extractor.extract(fn)
 
                 tags2 = list(tags)
+                filedesc = desc+" "
                 if extra_metadata is not None:
                     for em in extra_metadata.keys():
                         tags2.append(em +" "+(str(extra_metadata[em])))
+                        filedesc += em +" "+(str(extra_metadata[em]))+", "
 
-                fd = xferjob.FileData(path,sz,mru,desc,tags2)
+                fd = xferjob.FileData(path,sz,mru,filedesc,tags2)
                 job.files.append(fd)
             mdcontent = job.toJSON()
           
@@ -277,6 +279,7 @@ def uploadPOST():
             if app.config['UPLOAD_VIA_DV']:
                 upload.files(app.config['BASE_DV_URL'],session[usr.settings.DV_KEY],job,Path('c:/temp/dvdata'))
                 print("Upload finished!")
+
 
 
 @app.route("/tobeocat")
