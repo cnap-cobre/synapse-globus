@@ -1,4 +1,4 @@
-from flask import Flask, url_for, session, redirect, request, render_template
+from flask import Flask, url_for, session, redirect, request, render_template, Response, stream_with_context
 from datetime import datetime
 import re
 import os
@@ -14,9 +14,17 @@ from dataverse import download
 from pathlib import Path
 import usr
 import zipfile
+# import time
+import uuid
+# import redis
 
 
 class CustomFlask(Flask):
+
+    def __init__(self, *args, **kwargs):
+        super(CustomFlask,self).__init__(*args,**kwargs)
+        self.msgs_for_client = {}
+
     jinja_options = Flask.jinja_options.copy()
     jinja_options.update(dict(
         variable_start_string='%%',  # Default is '{{', I'm changing this because Vue.js uses '{{' / '}}'
@@ -28,6 +36,7 @@ app = CustomFlask(__name__)
 app._static_folder = 'static'
 app._static_url_path = ''
 app.config.from_pyfile('app.conf')
+red = redis.StrictRedis()
 
 # Run the app if called via script
 if __name__ == '__main__':
@@ -167,7 +176,12 @@ def logout():
 
 @app.route("/upload")
 def uploadGET():
-  
+    # session['data'] = {'percent_done':0}
+
+    if 'session_id' not in session:
+        session['session_id'] = str(uuid.uuid4())
+        app.msgs_for_client[session['session_id']] = 0
+
     #Get a list of available globus endpoints.
     tc = getGlobusObj()
     if 'Response' in str(type(tc)):
@@ -226,6 +240,14 @@ def setDVKey():
 def uploadPOST():
     files_to_upload = []
 
+    session['percent_done'] = 1
+    session['data'] = {'percent_done':0}
+
+    if 'session_id' not in session:
+        session['session_id'] = str(uuid.uuid4())
+        app.msgs_for_client[session['session_id']] = 0
+    
+
     # session[usr.settings.DV_KEY] = request.form['dvkey']
     # session[usr.settings.GLOBUS_USER] = session['guser']
     session[usr.settings.SRC_ENDPOINT] = request.form['selected_endpoint']
@@ -250,9 +272,11 @@ def uploadPOST():
     #     answers[question] = input(question)
     # metadata_extractor.set_init_questions(answers)
 
+
     for v in request.form:
         if 'file_list' in v:
             file_data = json.loads(request.form[v])
+            
             for fe in file_data:
                 fn = fe['name']
                 path = fe['path']
@@ -277,8 +301,28 @@ def uploadPOST():
             f.close()
 
             if app.config['UPLOAD_VIA_DV']:
-                upload.files(app.config['BASE_DV_URL'],session[usr.settings.DV_KEY],job,Path('c:/temp/dvdata'))
+                rootPath = Path('c:/temp/dvdata')
+                server = app.config['BASE_DV_URL']
+                api_key = session[usr.settings.DV_KEY]
+                idx = 0
+                cnt = len(job.files)
+                for fd in job.files:
+                    if fd.path[0] == '/':
+                        fd.path = fd.path[1:]
+                        filePath = rootPath / fd.path
+                        upload.onefile(server,api_key,job.dataset_id,filePath,fd.desc,fd.tags)
+                        idx+=1
+                        # session['percent_done'] = idx/cnt
+                        # session.modified = True
+                        #session['data']['percent_done'] = idx/cnt
+                        #red.publish('percent_done',str(idx/cnt))
+                        app.msgs_for_client[session['session_id']] = idx/cnt
+                        print('SYSTEM SAYS: '+str(app.msgs_for_client[session['session_id']]))
+
+
+                # upload.files(app.config['BASE_DV_URL'],session[usr.settings.DV_KEY],job,Path('c:/temp/dvdata'))
                 print("Upload finished!")
+    return redirect('/upload')
 
 
 
@@ -352,6 +396,32 @@ def pending():
             data.append(job.toDict())
         # filelist += path
     return json.dumps(data,indent=1)
+
+
+# def get_message(msg):
+#     '''this could be any function that blocks until data is ready'''
+#     #  print('PERCENT DONE: '+str(msg))
+#     time.sleep(1.0)
+#     # s = time.ctime(time.time())
+#     s = str(msg*100) + "%"
+#     if s == "0%":
+#         s = ""
+#     return s
+
+# @app.route('/stream')
+# def stream():
+#     def eventStream():
+#         while True:
+#             blah  = 0
+#             if 'session_id' in session:
+#                 if session['session_id'] in app.msgs_for_client:
+#                     blah = app.msgs_for_client[session['session_id']]
+#             print(str(blah))
+#             # sessvar = session['percent_done']
+#             # wait for source data to be available, then push it
+#             yield 'data: {}\n\n'.format(get_message(blah))
+#     return Response(stream_with_context(eventStream()), mimetype="text/event-stream")
+
 
 def load_app_client():
     return globus_sdk.ConfidentialAppAuthClient(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])

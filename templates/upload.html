@@ -28,6 +28,8 @@
         Using Dataverse Key %%dvkey%% <a href="setdvkey">Change</a>
       </div>
 
+     
+
       <div>
         <h2>1. Choose Globus Source Endpoint of files:</h2> 
         <select id="endpoints">
@@ -76,77 +78,17 @@
       </div>
       <!-- <input type="button" onclick="uploadFiles()" value="Upload"/> -->
       <ul id="items" hidden></ul>
-      <ul id="lbl_status"></ul>
+      <h2><ul id="lbl_status"></ul><ul id="target_div">%%status_update%%</ul></h2>
       <input type="button" onclick="uploadFiles()" value="Upload"/>
-      <!-- <div id="app" v-cloak @drop.prevent="addFile" @dragover.prevent>
-         <h2>Files to Upload (Drag them over)</h2>
-         <ul>
-            <li v-for="file in files">
-               {{ file.name }} {{ file.lastModified }} ({{ file.size | kb }} kb) <button @click="removeFile(file)" title="Remove">X</button>
-            </li>
-         </ul>
-         
-         <button :disabled="uploadDisabled" @click="upload">Upload</button>
-      </div> -->
    
 <script>
-// Vue.config.productionTip = false;
-// Vue.config.devtools = false;
 
-// Vue.filter('kb', val => {
-//   return Math.floor(val/1024);  
-// });
 
-// const app = new Vue({
-//   el:'#app', 
-//   data: {
-//     files:[]
-//   },
-//   computed: {
-//     uploadDisabled() {
-//       return this.files.length === 0;
-//     }
-//   },
-//   methods:{
-//     addFile(e) {
-//       let droppedFiles = e.dataTransfer.files;
-//       if(!droppedFiles) return;
-//       // this tip, convert FileList to array, credit: https://www.smashingmagazine.com/2018/01/drag-drop-file-uploader-vanilla-js/
-//       ([...droppedFiles]).forEach(f => {
-//         this.files.push(f);
-//       });
-//     },
-//     removeFile(file){
-//       this.files = this.files.filter(f => {
-//         return f != file;
-//       });      
-//     },
-//     upload() {
-      
-//       let formData = new FormData();
-//       this.files.forEach((f,x) => {
-//         formData.append('FTO'+(x+1), f.name+'~'+f.lastModified+'~'+f.size);
-//         // formData.append('fileLastModified'+(x+1),f.lastModified);
-//         // formData.append('fileSize'+(x+1), f.size);
-//       });
-      
-//       fetch('http://localhost:5000/upload', {
-//         method:'POST',
-//         body: formData
-//       })
-//       .then(res => res.json())
-//       .then(res => {
-//          console.log('done uploading', res);
-//       })
-//       .catch(e => {
-//         console.error(JSON.stringify(e.message));
-//       });
-      
-//     }
-//   }
-
-  
-// })
+// var targetContainer = document.getElementById("target_div");
+//       var eventSource = new EventSource("/stream")
+//         eventSource.onmessage = function(e) {
+//         targetContainer.innerHTML = e.data;
+//       };
 
 
 // Drop handler function to get all files
