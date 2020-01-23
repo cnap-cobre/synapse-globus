@@ -36,7 +36,7 @@ app = CustomFlask(__name__)
 app._static_folder = 'static'
 app._static_url_path = ''
 app.config.from_pyfile('app.conf')
-red = redis.StrictRedis()
+# red = redis.StrictRedis()
 
 # Run the app if called via script
 if __name__ == '__main__':
@@ -209,7 +209,7 @@ def uploadGET():
     datasets = []
     try:
         datasets = dataset.getList(app.config['BASE_DV_URL'],dvkey)
-    except dataset.AuthError as ae:
+    except dataset.AuthError as _ae:
         return redirect('/setdvkey?msg=Invalid_key')
     datasets.insert(0,{'name':'New Dataset...','entity_id':'0'})
 
@@ -238,7 +238,7 @@ def setDVKey():
 
 @app.route("/upload",methods=['POST'])
 def uploadPOST():
-    files_to_upload = []
+    # files_to_upload = []
 
     session['percent_done'] = 1
     session['data'] = {'percent_done':0}
@@ -266,8 +266,8 @@ def uploadPOST():
     md = metadata.Metadata()
     extractors = md.get_extractors()
     metadata_extractor = extractors[int(session[usr.settings.LAB_ID])]
-    qs = metadata_extractor.get_init_questions()
-    answers = {}
+    # qs = metadata_extractor.get_init_questions()
+    # answers = {}
     # for question in qs:
     #     answers[question] = input(question)
     # metadata_extractor.set_init_questions(answers)
