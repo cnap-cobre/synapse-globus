@@ -14,7 +14,7 @@ from dataverse import download
 from pathlib import Path
 import usr
 import zipfile
-# import time
+import time
 import uuid
 # import redis
 
@@ -398,29 +398,30 @@ def pending():
     return json.dumps(data,indent=1)
 
 
-# def get_message(msg):
-#     '''this could be any function that blocks until data is ready'''
-#     #  print('PERCENT DONE: '+str(msg))
-#     time.sleep(1.0)
-#     # s = time.ctime(time.time())
-#     s = str(msg*100) + "%"
-#     if s == "0%":
-#         s = ""
-#     return s
+def get_message(msg):
+    '''this could be any function that blocks until data is ready'''
+    #  print('PERCENT DONE: '+str(msg))
+    time.sleep(1.0)
+    # s = time.ctime(time.time())
+    s = str(msg*100) + "%"
+    if s == "0%":
+        s = ""
+    return s
 
-# @app.route('/stream')
-# def stream():
-#     def eventStream():
-#         while True:
-#             blah  = 0
-#             if 'session_id' in session:
-#                 if session['session_id'] in app.msgs_for_client:
-#                     blah = app.msgs_for_client[session['session_id']]
-#             print(str(blah))
-#             # sessvar = session['percent_done']
-#             # wait for source data to be available, then push it
-#             yield 'data: {}\n\n'.format(get_message(blah))
-#     return Response(stream_with_context(eventStream()), mimetype="text/event-stream")
+@app.route('/stream')
+def stream():
+    def eventStream():
+        while True:
+            blah  = 0
+            # print('In stream.')
+            if 'session_id' in session:
+                if session['session_id'] in app.msgs_for_client:
+                    blah = app.msgs_for_client[session['session_id']]
+            # print('Val '+str(blah))
+            # sessvar = session['percent_done']
+            # wait for source data to be available, then push it
+            yield 'data: {}\n\n'.format(get_message(blah))
+    return Response(stream_with_context(eventStream()), mimetype="text/event-stream")
 
 
 def load_app_client():
