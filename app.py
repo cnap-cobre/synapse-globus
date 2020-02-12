@@ -51,7 +51,7 @@ def getGlobusObj():
     return transfer_client
 
 
-def globusDo(func, tc:globus_sdk.TransferClient):
+def globusDo(func, tc:globus_sdk.TransferClient, **kwargs):
     if tc is None:
         tc = getGlobusObj()
     try:
@@ -62,7 +62,7 @@ def globusDo(func, tc:globus_sdk.TransferClient):
             session[usr.settings.GLOBUS_ID] = info['sub']
             session[usr.settings.GLOBUS_USER] = info['preferred_username']
             print(info.data)
-        return func(tc)
+        return func(tc,kwargs)
         #globus.available_endpoints(transfer_client)
     except (globus_sdk.exc.TransferAPIError, KeyError) as e:
         if 'Token is not active' in str(e):
@@ -245,6 +245,9 @@ def uploadPOST():
 
     if 'session_id' not in session:
         session['session_id'] = str(uuid.uuid4())
+        #Since the session variable only gets updated per full page refresh (via cookies)
+        #We need an update mechanism that updates more frequently for our server side updates
+        #During upload. So we store our ID via the app.mss_for_client variable.
         app.msgs_for_client[session['session_id']] = 0
     
 
@@ -324,7 +327,24 @@ def uploadPOST():
                 print("Upload finished!")
     return redirect('/upload')
 
+@app.route("/sharetest")
+def shareTest():
+    tc = getGlobusObj()
+        
+    if 'Response' in str(type(tc)):
+        return tc
 
+    dvEP = app.config['DATAVERSE_GLOBUS_ENDPOINT_ID']
+    tr = globusDo(globus.activateEndpoint,tc,globus_endpoint_id=dvEP,usr='synapse',pc='}?pWoPi3_AqkA)&yQaf)#+v>^:&[?*n/')
+
+    # tr = globusDo(globus.getActivationRequirements,tc,globus_endpoint_id=app.config['DATAVERSE_GLOBUS_ENDPOINT_ID'])
+    if 'Response' in str(type(tr)):
+        return tr
+    elif 'logged in' in str(tr):
+        return redirect('/sharetest')
+
+
+    return str(tr)
 
 @app.route("/tobeocat")
 def toBeocat():
