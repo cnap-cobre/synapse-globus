@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 import copy
 from enum import Enum
+import sys
 
 class GResultType(Enum):
     SUCCESS = 1
@@ -34,30 +35,30 @@ def getGlobusObj(session):
     res = GResult
     if not session.get('is_authenticated'):
         res.result_type = GResultType.NOT_LOGGED_IN
-       return res
+        return res
     authorizer = globus_sdk.AccessTokenAuthorizer(
        session['tokens']['transfer.api.globus.org']['access_token'])
     transfer_client = globus_sdk.TransferClient(authorizer=authorizer)
     return transfer_client
 
 
-def globusDo(func, tc:globus_sdk.TransferClient, **kwargs):
-    if tc is None:
-        tc = getGlobusObj()
-    try:
-        if (usr.settings.GLOBUS_ID not in session) or (len(session[usr.settings.GLOBUS_ID]) < 5):
-            auth2 = globus_sdk.AccessTokenAuthorizer(session['tokens']['auth.globus.org']['access_token'])
-            client = globus_sdk.AuthClient(authorizer=auth2)
-            info = client.oauth2_userinfo()
-            session[usr.settings.GLOBUS_ID] = info['sub']
-            session[usr.settings.GLOBUS_USER] = info['preferred_username']
-            print(info.data)
-        return func(tc,kwargs)
-        #globus.available_endpoints(transfer_client)
-    except (globus_sdk.exc.TransferAPIError, KeyError) as e:
-        if 'Token is not active' in str(e):
-            return redirect(url_for('globus_login'))
-        return "There was an error getting available Globus end points: "+str(e)
+# def globusDo(func, tc:globus_sdk.TransferClient, **kwargs):
+#     if tc is None:
+#         tc = getGlobusObj()
+#     try:
+#         if (usr.settings.GLOBUS_ID not in session) or (len(session[usr.settings.GLOBUS_ID]) < 5):
+#             auth2 = globus_sdk.AccessTokenAuthorizer(session['tokens']['auth.globus.org']['access_token'])
+#             client = globus_sdk.AuthClient(authorizer=auth2)
+#             info = client.oauth2_userinfo()
+#             session[usr.settings.GLOBUS_ID] = info['sub']
+#             session[usr.settings.GLOBUS_USER] = info['preferred_username']
+#             print(info.data)
+#         return func(tc,kwargs)
+#         #globus.available_endpoints(transfer_client)
+#     except (globus_sdk.exc.TransferAPIError, KeyError) as e:
+#         if 'Token is not active' in str(e):
+#             return redirect(url_for('globus_login'))
+#         return "There was an error getting available Globus end points: "+str(e)
 
 
 
@@ -118,33 +119,58 @@ def grant_permission(tc:globus_sdk.TransferClient,sharedEndpointID:str,globus_us
         'permissions': 'rw'
     }
     tr = tc.add_endpoint_acl_rule(sharedEndpointID,newACL)
+    return tr
 
 def del_permission(tc:globus_sdk.TransferClient,sharedEndpointID:str,ACL_ID:str):
     tr = tc.delete_endpoint_acl_rule(sharedEndpointID,ACL_ID)
+    return tr
 
 
 def getActivationRequirements(tc:globus_sdk.TransferClient, globus_endpoint_id):
-    tr = tc.endpoint_get_activation_requirements(globus_endpoint_id['globus_endpoint_id'])
+    tr = tc.endpoint_get_activation_requirements(globus_endpoint_id)
+    print(tr)
+    return tr
+
+def autoActivate(tc:globus_sdk.TransferClient, globus_endpoint_id):
+    tr = tc.endpoint_autoactivate(globus_endpoint_id)
     print(tr)
     return tr
 
 def activateEndpoint(tc:globus_sdk.TransferClient,globus_endpoint_id:str,usr:str,pc:str):
-    initial_response = getActivationRequirements(tc,globus_endpoint_id)
-    request = copy.deepcopy(initial_response)
+    initial_response = autoActivate(tc,globus_endpoint_id)
+    req3 = []
+    for at in initial_response['DATA']:
+        if at['type'] == 'myproxy':
+            if at['name'] == 'passphrase':
+                at['value'] = pc
+            if at['name'] == 'username':
+                at['value'] = usr
+            req3.append(at)
+    #https://docs.globus.org/api/transfer/endpoint_activation/#activation_requirements_document
+    #If adjusting this document, please read  the above page carefully. The current documentation
+    #as of 2/19/2020 is incorrect at least with how we have the Dataverse Globus enpoint configured.
+    #The documentation says to get the activation requirements, add in the correct values, and send.
+    #Instead, I've had to add the following fields as described in the example activation document
+    #found in the above link, NOT simply using the activation_requirements doc queried from the
+    #endpoint.
+    req2 = {
+        'DATA_TYPE': 'activation_requirements',
+        'expires_in': 0,
+        'expire_time': None,
+        'auto_activation_supported': True,
+        'activated': False,
+        'length': len(req3),
+        'oauth_server': None,
+        'DATA': req3
+    }
+    try:
+        tr = tc.endpoint_activate(globus_endpoint_id,req2)
+        print(tr)
+        return tr
+    except:
+        print(sys.exc_info())
+        return sys.exc_info()
 
-    for i in range(0,len(initial_response['DATA'])):
-        if request['DATA'][i]['type'] != 'myproxy':
-            del request['DATA'][i]
-            continue
-        if request['DATA'][i]['name'] == 'passphrase':
-            request['DATA'][i]['value'] = pc
-        if request['DATA'][i]['name'] == 'username':
-            request['DATA'][i]['value'] = usr
-        
-    print(request)
-    tr = tc.endpoint_activate(globus_endpoint_id,request)
-    print(tr)
-    return tr
 
 def transfer(tc:globus_sdk.TransferClient,srcEP, destEP,srcPathDir,destPathDir):
     srcPathDir = Path(str(srcPathDir).replace(":",""))

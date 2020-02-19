@@ -329,13 +329,31 @@ def uploadPOST():
 
 @app.route("/sharetest")
 def shareTest():
-    tc = getGlobusObj()
-        
-    if 'Response' in str(type(tc)):
-        return tc
+    
 
     dvEP = app.config['DATAVERSE_GLOBUS_ENDPOINT_ID']
-    tr = globusDo(globus.activateEndpoint,tc,globus_endpoint_id=dvEP,usr='synapse',pc='}?pWoPi3_AqkA)&yQaf)#+v>^:&[?*n/')
+
+    #get passcode from offline src.
+    creds = ''
+    try:
+        fr = open(app.config['DATAVERSE_SYNAPSE_ACCNT_CREDS'],'r')
+        creds = fr.read()
+        fr.close()
+    except:
+        return 'unable to retrieve dataverse local user credentials.'
+
+    #Activate the dataverse endpoint to setup a share.
+    try:
+        tc = getGlobusObj()
+        if 'Response' in str(type(tc)):
+            return tc
+        elif 'logged in' in str(tc):
+            return redirect('/sharetest')
+        tr = globus.activateEndpoint(tc,globus_endpoint_id=dvEP,usr='synapse',pc=creds)
+    except (globus_sdk.exc.TransferAPIError, KeyError) as e:
+        if 'Token is not active' in str(e):
+            return redirect(url_for('globus_login'))
+        return "There was an error activating the dataverse ep: "+str(e)
 
     # tr = globusDo(globus.getActivationRequirements,tc,globus_endpoint_id=app.config['DATAVERSE_GLOBUS_ENDPOINT_ID'])
     if 'Response' in str(type(tr)):
