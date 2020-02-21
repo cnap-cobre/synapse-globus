@@ -333,36 +333,47 @@ def shareTest():
 
     dvEP = app.config['DATAVERSE_GLOBUS_ENDPOINT_ID']
 
-    #get passcode from offline src.
-    creds = ''
-    try:
-        fr = open(app.config['DATAVERSE_SYNAPSE_ACCNT_CREDS'],'r')
-        creds = fr.read()
-        fr.close()
-    except:
-        return 'unable to retrieve dataverse local user credentials.'
+    # #get passcode from offline src.
+    # creds = ''
+    # try:
+    #     fr = open(app.config['SENSITIVE_INFO'],'r')
+    #     creds = fr.read()
+    #     fr.close()
+    # except:
+    #     return 'unable to retrieve dataverse local user credentials.'
 
-    #Activate the dataverse endpoint to setup a share.
-    try:
-        tc = getGlobusObj()
-        if 'Response' in str(type(tc)):
-            return tc
-        elif 'logged in' in str(tc):
-            return redirect('/sharetest')
-        tr = globus.activateEndpoint(tc,globus_endpoint_id=dvEP,usr='synapse',pc=creds)
-    except (globus_sdk.exc.TransferAPIError, KeyError) as e:
-        if 'Token is not active' in str(e):
-            return redirect(url_for('globus_login'))
-        return "There was an error activating the dataverse ep: "+str(e)
+    # #Activate the dataverse endpoint to setup a share.
+    # try:
+    #     tc = getGlobusObj()
+    #     if 'Response' in str(type(tc)):
+    #         return tc
+    #     elif 'logged in' in str(tc):
+    #         return redirect('/sharetest')
+
+
+
+        # tr = globus.activateEndpoint(tc,globus_endpoint_id=dvEP,usr='synapse',pc=creds)
+
+    # except (globus_sdk.exc.TransferAPIError, KeyError) as e:
+    #     if 'Token is not active' in str(e):
+    #         return redirect(url_for('globus_login'))
+    #     return "There was an error activating the dataverse ep: "+str(e)
+    res = globus.nativeAPPGenerateRefreshToken(app.config['SENSITIVE_INFO'])
+    print(res)
+
+
+
+
+   
 
     # tr = globusDo(globus.getActivationRequirements,tc,globus_endpoint_id=app.config['DATAVERSE_GLOBUS_ENDPOINT_ID'])
-    if 'Response' in str(type(tr)):
-        return tr
-    elif 'logged in' in str(tr):
-        return redirect('/sharetest')
+    # if 'Response' in str(type(tr)):
+    #     return tr
+    # elif 'logged in' in str(tr):
+    #     return redirect('/sharetest')
 
 
-    return str(tr)
+    # return str(tr)
 
 @app.route("/tobeocat")
 def toBeocat():
@@ -463,4 +474,4 @@ def stream():
 
 
 def load_app_client():
-    return globus_sdk.ConfidentialAppAuthClient(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
+    return globus_sdk.ConfidentialAppAuthClient(app.config['GLOBUS_WEB_APP_CLIENT_ID'], app.config['GLOBUS_WEB_APP_CLIENT_SECRET'])

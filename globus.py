@@ -4,6 +4,7 @@ from pathlib import Path
 import copy
 from enum import Enum
 import sys
+import json
 
 class GResultType(Enum):
     SUCCESS = 1
@@ -82,11 +83,86 @@ def check(tc:globus_sdk.TransferClient, files):
     names, size and last modified attributes"""
     tc.endpoint_search(filter_scope="shared-with-me")
 
+def nativeAPPGenerateRefreshToken(credential_path:str):
+    fr = open(credential_path,'r+')
+    vals = json.loads(fr.read())
+    native_client_id = vals['GLOBUS_NATIVE_APP_CLIENT_ID']
+   
+    #https://globus-sdk-python.readthedocs.io/en/stable/tutorial/#advanced-2-refresh-tokens-never-login-again
+    # you must have a client ID
+    client = globus_sdk.NativeAppAuthClient(native_client_id)
+    client.oauth2_start_flow(refresh_tokens=True)
+
+    print('Please go to this URL and login: {0}'
+    .format(client.oauth2_get_authorize_url()))
+
+    get_input = getattr(__builtins__, 'raw_input', input)
+    auth_code = get_input('Please enter the code here: ').strip()
+    token_response = client.oauth2_exchange_code_for_tokens(auth_code)
+
+    # let's get stuff for the Globus Transfer service
+    globus_transfer_data = token_response.by_resource_server['transfer.api.globus.org']
+    # the refresh token and access token, often abbr. as RT and AT
+    transfer_rt = globus_transfer_data['refresh_token']
+    print(transfer_rt)
+    vals['GLOBUS_NATIVE_APP_REFRESH_TOKEN'] = transfer_rt
+    fr.write(json.dumps(vals))
+    fr.close()
+
+    return transfer_rt
+
+# def nativeAPPLogin(native_client_id:str, ):
+    # #https://globus-sdk-python.readthedocs.io/en/stable/tutorial/#advanced-2-refresh-tokens-never-login-again
+    # # you must have a client ID
+    # client = globus_sdk.NativeAppAuthClient(native_client_id)
+    # client.oauth2_start_flow(refresh_tokens=True)
+
+    # print('Please go to this URL and login: {0}'
+    # .format(client.oauth2_get_authorize_url()))
+
+    # get_input = getattr(__builtins__, 'raw_input', input)
+    # auth_code = get_input('Please enter the code here: ').strip()
+    # token_response = client.oauth2_exchange_code_for_tokens(auth_code)
+
+    # # let's get stuff for the Globus Transfer service
+    # globus_transfer_data = token_response.by_resource_server['transfer.api.globus.org']
+    # # the refresh token and access token, often abbr. as RT and AT
+    # transfer_rt = globus_transfer_data['refresh_token']
+    # transfer_at = globus_transfer_data['access_token']
+    # expires_at_s = globus_transfer_data['expires_at_seconds']
+
+    # # Now we've got the data we need, but what do we do?
+    # # That "GlobusAuthorizer" from before is about to come to the rescue
+
+    # authorizer = globus_sdk.RefreshTokenAuthorizer(
+    #     transfer_rt, client, access_token=transfer_at, expires_at=expires_at_s)
+
+    # # and try using `tc` to make TransferClient calls. Everything should just
+    # # work -- for days and days, months and months, even years
+    # tc = globus_sdk.TransferClient(authorizer=authorizer)
+
+def getNativeTransferClient(native_client_id,refresh_token):
+    client = globus_sdk.NativeAppAuthClient(native_client_id)
+    authorizer = globus_sdk.RefreshTokenAuthorizer(refresh_token,client)
+    tc = globus_sdk.TransferClient(authorizer=authorizer)
+    return tc
+
 
 def does_share_exist(tc:globus_sdk.TransferClient,globus_usr:str):
     return os.path.exists(globus_usr)
 
-def setupXfer(tc:globus_sdk.TransferClient,globus_usr:str, dv_endpoint_id:str, dirName:str):
+def setupXfer(credspath:str, globus_usr:str, dv_endpoint_id:str, dirName:str):
+    
+    fr = open(credspath,'r')
+    vals = json.loads(fr.read())
+    synapseUser = vals['DATAVERSE_GLOBUS_LOCAL_USER']
+    synapsePass = vals['DATAVERSE_GLOBUS_LOCAL_PASSWORD']
+    native_client_id = vals['GLOBUS_NATIVE_APP_CLIENT_ID']
+    refresh_token = vals['GLOBUS_NATIVE_APP_REFRESH_TOKEN']
+    fr.close()
+    
+    tc = getNativeTransferClient(native_client_id,refresh_token)
+    activateEndpoint(tc,dv_endpoint_id,synapseUser,synapsePass)
     createDir(tc,dv_endpoint_id,dirName)
     shareEID = new_share(tc,dv_endpoint_id,globus_usr,dirName)
     grant_permission(tc,shareEID,globus_usr,dirName)
