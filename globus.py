@@ -151,7 +151,7 @@ def getNativeTransferClient(native_client_id,refresh_token):
 def does_share_exist(tc:globus_sdk.TransferClient,globus_usr:str):
     return os.path.exists(globus_usr)
 
-def setupXfer(credspath:str, globus_usr:str, dv_endpoint_id:str, dirName:str):
+def setupXfer(credspath:str, globus_usr:str, globus_usr_id:str, dv_endpoint_id:str, dirName:str):
     
     fr = open(credspath,'r')
     vals = json.loads(fr.read())
@@ -164,13 +164,17 @@ def setupXfer(credspath:str, globus_usr:str, dv_endpoint_id:str, dirName:str):
     tc = getNativeTransferClient(native_client_id,refresh_token)
     activateEndpoint(tc,dv_endpoint_id,synapseUser,synapsePass)
     createDir(tc,dv_endpoint_id,dirName)
-    shareEID = new_share(tc,dv_endpoint_id,globus_usr,dirName)
-    grant_permission(tc,shareEID,globus_usr,dirName)
+    newShareResult = new_share(tc,dv_endpoint_id,globus_usr,dirName)
+    shareEID = newShareResult['id']
+    grant_permission(tc,shareEID,globus_usr_id,dirName)
     return shareEID
 
 
 def createDir(tc:globus_sdk.TransferClient,dv_endpoint_id:str, dirName:str):
-    return tc.operation_mkdir(dv_endpoint_id,'/~/'+dirName)
+    tr =  tc.operation_mkdir(dv_endpoint_id,'/~/'+dirName)
+    print('Create Dir Result:')
+    print(str(tr))
+    return tr
 
 def new_share(tc:globus_sdk.TransferClient,dv_endpoint_id:str,globus_usr:str, dirName:str):
     newEP = {
@@ -182,23 +186,29 @@ def new_share(tc:globus_sdk.TransferClient,dv_endpoint_id:str,globus_usr:str, di
         'organization': 'Kansas State University - Dataverse'
     }
     tr = tc.create_shared_endpoint(newEP)
+    print('Create Share Result:')
     print(str(tr))
     return tr
     
 
-def grant_permission(tc:globus_sdk.TransferClient,sharedEndpointID:str,globus_usr:str,dirName:str):
+def grant_permission(tc:globus_sdk.TransferClient,sharedEndpointID:str,globus_usr_id:str,dirName:str):
+    # https://docs.globus.org/api/transfer/acl/
     newACL = {
         'DATA_TYPE': 'access',
         'principal_type': 'identity',
-        'principal': globus_usr,
+        'principal': globus_usr_id,
         'path': '/~/'+dirName+'/',
         'permissions': 'rw'
     }
     tr = tc.add_endpoint_acl_rule(sharedEndpointID,newACL)
+    print('Grant Permission Result:')
+    print(tr)
     return tr
 
 def del_permission(tc:globus_sdk.TransferClient,sharedEndpointID:str,ACL_ID:str):
     tr = tc.delete_endpoint_acl_rule(sharedEndpointID,ACL_ID)
+    print('Delete permission result:')
+    print(str(tr))
     return tr
 
 

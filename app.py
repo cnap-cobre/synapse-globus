@@ -358,12 +358,17 @@ def shareTest():
     #     if 'Token is not active' in str(e):
     #         return redirect(url_for('globus_login'))
     #     return "There was an error activating the dataverse ep: "+str(e)
-    res = globus.nativeAPPGenerateRefreshToken(app.config['SENSITIVE_INFO'])
-    print(res)
 
 
+    # res = globus.nativeAPPGenerateRefreshToken(app.config['SENSITIVE_INFO'])
+    # print(res)
+    globus_usr = 'deepwell@ksu.edu'
+    globus_usr_id = '0a960cd0-01fd-449d-a825-bb3c0d28c71b'
+    metadata_uid = str(uuid.uuid4())
+    dirName = 'dvxfer_20200226_173333_' +globus_usr + '^' + metadata_uid
+    globus.setupXfer(app.config['SENSITIVE_INFO'],globus_usr,globus_usr_id,app.config['DATAVERSE_GLOBUS_ENDPOINT_ID'],dirName)
 
-
+    return("Success")
    
 
     # tr = globusDo(globus.getActivationRequirements,tc,globus_endpoint_id=app.config['DATAVERSE_GLOBUS_ENDPOINT_ID'])
