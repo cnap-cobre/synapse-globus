@@ -5,6 +5,9 @@ import copy
 from enum import Enum
 import sys
 import json
+import datetime
+from dataverse import xferjob
+from typing import List
 
 class GResultType(Enum):
     SUCCESS = 1
@@ -256,6 +259,110 @@ def activateEndpoint(tc:globus_sdk.TransferClient,globus_endpoint_id:str,usr:str
     except:
         print(sys.exc_info())
         return sys.exc_info()
+
+def find_globus_path_for_files(tc:globus_sdk.TransferClient,files:xferjob.Job):
+    filesRemaining:List[xferjob.FileData] = files.files.copy()
+    
+    res = find_file(tc,files.srcEndPoint,'',filesRemaining)
+    if res == None:
+        return "Could not find at least one of the files you dragged in the selected Globus Source Endpoint. Are you sure it is there?"
+    #we've attached globus IDs to all the files now.
+    return "Success!"
+   
+
+def are_files_same(globus_path:str,globus_file,web_file:xferjob.FileData):
+    #TODO: need to take into account file path?!
+    fileName = web_file.path
+    if web_file.path[0] == '/':
+        fileName = web_file.path[1:]
+    else:
+        #Does the relative path we have with the browser file
+        #exist in the abs path we find in globus?
+        if web_file.path in globus_path+fileName:
+            hh = 'Woohoo!'
+
+    if globus_file['type'] != 'file': return False
+    if globus_file['name'] == fileName:
+                #Check file size & last modified!
+                g = 6
+                header = fileName+' at '+globus_path+': '
+                print(header+'Name Matches!')
+
+                globus_bytes = globus_file['size']
+                if globus_bytes == web_file.size:
+                    #file name and size match. let's check last modified...
+                    print(header+'FileSize Matches @ ' + str(web_file.size))
+                else:
+                    print(header+'Abandoning because globus file size of '+globus_bytes+'<> web browser val of '+web_file.size)
+                    return False
+                dt = datetime.datetime.fromisoformat(globus_file['last_modified'])
+                timestamp = dt.timestamp()
+                found_last_modified = str(timestamp)[:-2] #Strip .0 from float
+                #browser last modified includes milliseconds; globus doesn't give us that.
+                selected_last_modified = str(web_file.mru)[:-3]
+                if abs(int(found_last_modified)-int(selected_last_modified)) < 2:
+                    #OK, we found a file with the same name, and within two seconds of
+                    #last modified field.
+                    #This is the directory!
+                    print(header+'last modified matches! considered a match.')
+                    return True
+                else:
+                    print(header+'Abandoning - Last modified globus of '+found_last_modified+' <> browser last modified of '+web_file.mru)
+    return False
+
+
+def do_files_exist_in_dir(dir:globus_sdk.transfer.response.IterableTransferResponse,files:xferjob.Job):
+    return False
+
+def find_file(tc:globus_sdk.TransferClient,srcEP:str, relativeDir:str,filesRemaining:List[xferjob.FileData]):
+    if relativeDir == '':
+        relativeDir = "/~/"
+    dlr = tc.operation_ls(srcEP,path=relativeDir)
+    print(dlr['DATA'])
+    todo = []
+    for element in dlr['DATA']:
+        if element['type'] == 'dir':
+            todo.append(element)
+        elif element['type'] == 'file':
+            for fd in filesRemaining:
+                if are_files_same(relativeDir,element,fd) == True:
+                    fd.globus_path = relativeDir+fd.path.rsplit('/',1)[1]
+                    filesRemaining.remove(fd)
+                    if len(filesRemaining) == 0: return True
+            # if element['name'] == fileName:
+            #     #Check file size & last modified!
+            #     g = 6
+            #     header = fileName+' at '+relativeDir+': '
+            #     print(header+'Name Matches!')
+
+            #     globus_bytes = element['size']
+            #     if globus_bytes == fileSize:
+            #         #file name and size match. let's check last modified...
+            #         print(header+'FileSize Matches @ ' + str(fileSize))
+            #     else:
+            #         print(header+'Abandoning because globus file size of '+globus_bytes+'<> web browser val of '+fileSize)
+            #         continue
+            #     dt = datetime.datetime.fromisoformat(element['last_modified'])
+            #     timestamp = dt.timestamp()
+            #     found_last_modified = str(timestamp)[:-2] #Strip .0 from float
+            #     #browser last modified includes milliseconds; globus doesn't give us that.
+            #     selected_last_modified = str(fileMRU)[:-3]
+            #     if abs(int(found_last_modified)-int(selected_last_modified)) < 2:
+            #         #OK, we found a file with the same name, and within two seconds of
+            #         #last modified field.
+            #         #This is the directory!
+            #         print(header+'last modified matches! considered a match.')
+            #         return dlr
+            #     else:
+            #         print(header+'Abandoning - Last modified globus of '+found_last_modified+' <> browser last modified of '+fileMRU)
+    #Now that we've gone over all the files, let's delve the dirs.
+    for dir_element in todo:
+        newDir = relativeDir+dir_element['name']+'/'
+        print('Delving '+newDir)
+        result =  find_file(tc,srcEP,newDir,filesRemaining)
+        if result != None:
+            return result
+    return None
 
 
 def transfer(tc:globus_sdk.TransferClient,srcEP, destEP,srcPathDir,destPathDir):

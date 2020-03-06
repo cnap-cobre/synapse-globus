@@ -253,14 +253,18 @@ def uploadPOST():
 
     # session[usr.settings.DV_KEY] = request.form['dvkey']
     # session[usr.settings.GLOBUS_USER] = session['guser']
-    session[usr.settings.SRC_ENDPOINT] = request.form['selected_endpoint']
+
+    srcEP = request.form['selected_endpoint']
+
+    session[usr.settings.SRC_ENDPOINT] = srcEP
     session[usr.settings.LAB_ID] = request.form['lab_type']
     session[usr.settings.DATASET_ID] = request.form['dataset_id']
     
     #save MRU settings
     usr.updateDisk(Path(app.config['USER_SETTINGS_PATH']),session)
     
-    job = xferjob.Job(xferjob.getID(session[usr.settings.DV_KEY]),session[usr.settings.GLOBUS_ID],session[usr.settings.DATASET_ID],xferjob.getFilename())
+
+    job = xferjob.Job(xferjob.getID(session[usr.settings.DV_KEY]),session[usr.settings.GLOBUS_ID],session[usr.settings.DATASET_ID],xferjob.getFilename(),srcEP)
 
     desc = request.form['description']
     tags = request.form['tags'].split(',')
@@ -275,16 +279,17 @@ def uploadPOST():
     #     answers[question] = input(question)
     # metadata_extractor.set_init_questions(answers)
 
-
+    
     for v in request.form:
         if 'file_list' in v:
             file_data = json.loads(request.form[v])
-            
+            max_size = 0
             for fe in file_data:
                 fn = fe['name']
                 path = fe['path']
                 mru = fe['mru']
                 sz = fe['size']
+                max_size += sz
                 extra_metadata = metadata_extractor.extract(fn)
 
                 tags2 = list(tags)
@@ -297,12 +302,35 @@ def uploadPOST():
                 fd = xferjob.FileData(path,sz,mru,filedesc,tags2)
                 job.files.append(fd)
             mdcontent = job.toJSON()
+            print("Max Size: "+str(max_size))
           
             mdpath = Path('c:/temp/') / (job.job_id+'.json')
             f = open(mdpath,'w')
             f.write(mdcontent)
             f.close()
 
+            #See if can find path relative to Globus
+            file_data = job.files[0]
+            file_name_to_find = file_data.path
+            relative_root = ''
+            if file_data.path[0] == '/':
+                relativeRoot = ''
+                file_name_to_find = file_data.path[1:]
+                            
+
+
+
+            #Now we need to find the globus (absolute) path of the files
+            #Dragged 'n dropped.
+            tc = getGlobusObj()
+            if 'Response' in str(type(tc)):
+                return tc
+            find_result = globus.find_globus_path_for_files(tc,job) #job.srcEndPoint,relativeRoot,file_name_to_find,file_data.mru,file_data.size)
+            if 'Response' in str(type(find_result)):
+                return find_result
+            elif 'logged in' in str(find_result):
+                return redirect('/upload')
+            
             if app.config['UPLOAD_VIA_DV']:
                 rootPath = Path('c:/temp/dvdata')
                 server = app.config['BASE_DV_URL']
@@ -479,4 +507,7 @@ def stream():
 
 
 def load_app_client():
-    return globus_sdk.ConfidentialAppAuthClient(app.config['GLOBUS_WEB_APP_CLIENT_ID'], app.config['GLOBUS_WEB_APP_CLIENT_SECRET'])
+    fr = open(app.config['SENSITIVE_INFO'],'r')
+    vals = json.loads(fr.read())
+    fr.close()
+    return globus_sdk.ConfidentialAppAuthClient(vals['GLOBUS_WEB_APP_CLIENT_ID'], vals['GLOBUS_WEB_APP_CLIENT_SECRET'])

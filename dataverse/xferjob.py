@@ -8,6 +8,7 @@ class FileData:
     mru = 0
     desc = ''
     tags = []
+    globus_path = ''
     
     def __init__(self,filepath:str,filesize:int,filemru:int,filedesc:str,tag_data):
         self.path = filepath
@@ -40,12 +41,14 @@ class Job:
     dataset_id = ''
     files = []
     job_id = ''
+    srcEndPoint = ''
 
-    def __init__(self, dataverse_user_id, globus_user_id, dataverse_dataset_id,job_id):
+    def __init__(self, dataverse_user_id, globus_user_id, dataverse_dataset_id,job_id,srcEndPoint:str):
         self.dv_user_id = dataverse_user_id
         self.globus_id = globus_user_id
         self.dataset_id = dataverse_dataset_id
         self.job_id = job_id
+        self.srcEndPoint = srcEndPoint
 
     def toJSON(self):
         return json.dumps(self.toDict())
@@ -54,11 +57,11 @@ class Job:
         file_list = []
         for fd in self.files:
             file_list.append(fd.toDict())
-        return {'dvusrid':self.dv_user_id,'gid':self.globus_id,'dsid':self.dataset_id,'jobid':self.job_id,'filedata':file_list}
+        return {'dvusrid':self.dv_user_id,'gid':self.globus_id,'dsid':self.dataset_id,'jobid':self.job_id,'srcEndPoint':self.srcEndPoint,'filedata':file_list}
 
     @staticmethod
     def fromDict(dd):
-        j = Job(dd['dvusrid'],dd['gid'],dd['dsid'],dd['jobid'])
+        j = Job(dd['dvusrid'],dd['gid'],dd['dsid'],dd['jobid'],dd['srcEndPoint'])
         for f in dd['filedata']:
             fo = FileData.fromDict(f)
             j.files.append(fo)
