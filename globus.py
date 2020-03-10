@@ -376,3 +376,13 @@ def transfer(tc:globus_sdk.TransferClient,srcEP, destEP,srcPathDir,destPathDir):
     print('task_id='+tresult['task_id'])
     return tresult
 
+def transferjob(tc:globus_sdk,job:xferjob.Job,destEP:str):
+    tdata = globus_sdk.TransferData(tc,job.srcEndPoint,destEP,label='Synapse generated, from Dataverse',sync_level='mtime',preserve_timestamp=True)
+    f:xferjob.FileData
+    for f in job.files:
+        tdata.add_item(f.globus_path,f.path)
+    tresult = tc.submit_transfer(tdata)
+    print('task_id='+tresult['task_id'])
+    
+    return tresult
+

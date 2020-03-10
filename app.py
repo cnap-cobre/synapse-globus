@@ -264,7 +264,7 @@ def uploadPOST():
     usr.updateDisk(Path(app.config['USER_SETTINGS_PATH']),session)
     
 
-    job = xferjob.Job(xferjob.getID(session[usr.settings.DV_KEY]),session[usr.settings.GLOBUS_ID],session[usr.settings.DATASET_ID],xferjob.getFilename(),srcEP)
+    job = xferjob.Job(xferjob.getID(session[usr.settings.DV_KEY]),session[usr.settings.GLOBUS_ID],session[usr.settings.GLOBUS_USER],session[usr.settings.DATASET_ID],str(uuid.uuid4()),srcEP)
 
     desc = request.form['description']
     tags = request.form['tags'].split(',')
@@ -309,13 +309,13 @@ def uploadPOST():
             f.write(mdcontent)
             f.close()
 
-            #See if can find path relative to Globus
-            file_data = job.files[0]
-            file_name_to_find = file_data.path
-            relative_root = ''
-            if file_data.path[0] == '/':
-                relativeRoot = ''
-                file_name_to_find = file_data.path[1:]
+            # #See if can find path relative to Globus
+            # file_data = job.files[0]
+            # file_name_to_find = file_data.path
+            # relative_root = ''
+            # if file_data.path[0] == '/':
+            #     relativeRoot = ''
+            #     file_name_to_find = file_data.path[1:]
                             
 
 
@@ -331,6 +331,20 @@ def uploadPOST():
             elif 'logged in' in str(find_result):
                 return redirect('/upload')
             
+            #OK, we should have a globus path attached to our files.
+            #Set's setup the transfer.
+            globus.setupXfer(app.config['SENSITIVE_INFO'],job.globus_usr_name,job.globus_id,app.config['DATAVERSE_GLOBUS_ENDPOINT_ID'],job.job_id)
+
+            #Let's kickoff the transfer.
+            globus.transferjob(tc,job,app.config['DATAVERSE_GLOBUS_ENDPOINT_ID'])
+
+            #Let's re-save the job.
+            mdpath = Path('c:/temp/') / (job.job_id+'.json')
+            f = open(mdpath,'w')
+            f.write(mdcontent)
+            f.close()
+
+
             if app.config['UPLOAD_VIA_DV']:
                 rootPath = Path('c:/temp/dvdata')
                 server = app.config['BASE_DV_URL']
@@ -390,11 +404,9 @@ def shareTest():
 
     # res = globus.nativeAPPGenerateRefreshToken(app.config['SENSITIVE_INFO'])
     # print(res)
-    globus_usr = 'deepwell@ksu.edu'
-    globus_usr_id = '0a960cd0-01fd-449d-a825-bb3c0d28c71b'
-    metadata_uid = str(uuid.uuid4())
-    dirName = 'dvxfer_20200226_173333_' +globus_usr + '^' + metadata_uid
-    globus.setupXfer(app.config['SENSITIVE_INFO'],globus_usr,globus_usr_id,app.config['DATAVERSE_GLOBUS_ENDPOINT_ID'],dirName)
+    # globus_usr = 'deepwell@ksu.edu'
+    # globus_usr_id = '0a960cd0-01fd-449d-a825-bb3c0d28c71b'
+    globus.setupXfer(app.config['SENSITIVE_INFO'],job.globus_usr_name,job.globus_id,app.config['DATAVERSE_GLOBUS_ENDPOINT_ID'],job.job_id)
 
     return("Success")
    

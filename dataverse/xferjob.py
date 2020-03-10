@@ -38,17 +38,21 @@ class FileData:
 class Job:
     dv_user_id = 0
     globus_id = ''
+    globus_usr_name = ''
     dataset_id = ''
     files = []
     job_id = ''
     srcEndPoint = ''
+    globus_task_id = ''
 
-    def __init__(self, dataverse_user_id, globus_user_id, dataverse_dataset_id,job_id,srcEndPoint:str):
+    def __init__(self, dataverse_user_id, globus_user_id, dataverse_dataset_id,job_id,globus_usr_name:str,srcEndPoint:str,globus_task_id:str):
         self.dv_user_id = dataverse_user_id
         self.globus_id = globus_user_id
+        self.globus_usr_name = globus_usr_name
         self.dataset_id = dataverse_dataset_id
         self.job_id = job_id
         self.srcEndPoint = srcEndPoint
+        self.globus_task_id = globus_task_id
 
     def toJSON(self):
         return json.dumps(self.toDict())
@@ -57,11 +61,11 @@ class Job:
         file_list = []
         for fd in self.files:
             file_list.append(fd.toDict())
-        return {'dvusrid':self.dv_user_id,'gid':self.globus_id,'dsid':self.dataset_id,'jobid':self.job_id,'srcEndPoint':self.srcEndPoint,'filedata':file_list}
+        return {'dvusrid':self.dv_user_id,'gid':self.globus_id,'gusr':self.globus_usr_name,'dsid':self.dataset_id,'jobid':self.job_id,'srcEndPoint':self.srcEndPoint,'gtask_id':self.globus_task_id,'filedata':file_list}
 
     @staticmethod
     def fromDict(dd):
-        j = Job(dd['dvusrid'],dd['gid'],dd['dsid'],dd['jobid'],dd['srcEndPoint'])
+        j = Job(dd['dvusrid'],dd['gid'],dd['dsid'],dd['jobid'],dd['gusr'],dd['srcEndPoint'],dd['gtask_id'])
         for f in dd['filedata']:
             fo = FileData.fromDict(f)
             j.files.append(fo)
@@ -77,5 +81,5 @@ def getID(dv_apiKey):
     tmp = hashlib.md5(dv_apiKey.encode('utf-8')).hexdigest()
     return tmp + '_' + dv_apiKey[:3]
 
-def getFilename():
-    return 'dvxfer_'+datetime.datetime.now().strftime('%Y%m%d')+'_'+str(uuid.uuid4())
+# def getFilename():
+#     return 'dvxfer_'+datetime.datetime.now().strftime('%Y%m%d')+'_'+str(uuid.uuid4())
