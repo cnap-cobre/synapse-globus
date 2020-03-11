@@ -2,6 +2,7 @@ import json
 import datetime
 import hashlib
 import uuid
+from pathlib import Path
 class FileData:
     path = ''
     size = 0
@@ -75,8 +76,16 @@ class Job:
     def fromJSON(data):
         dd = json.loads(data)
         return Job.fromDict(dd)
-        
-
+    
+    @staticmethod
+    def todisk(directory:str, job:Job):
+        dirpath = Path(directory)
+        dirpath.mkdir(parents=True,exist_ok=True)
+        mdpath = dirpath  / (job.job_id+'.json')
+        data = job.toJSON()
+        with open(mdpath,'w') as f:
+            f.write(data)
+    
 def getID(dv_apiKey):
     tmp = hashlib.md5(dv_apiKey.encode('utf-8')).hexdigest()
     return tmp + '_' + dv_apiKey[:3]

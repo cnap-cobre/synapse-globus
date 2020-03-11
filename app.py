@@ -16,6 +16,7 @@ import usr
 import zipfile
 import time
 import uuid
+import hashlib
 # import redis
 
 
@@ -301,13 +302,9 @@ def uploadPOST():
 
                 fd = xferjob.FileData(path,sz,mru,filedesc,tags2)
                 job.files.append(fd)
-            mdcontent = job.toJSON()
             print("Max Size: "+str(max_size))
           
-            mdpath = Path('c:/temp/') / (job.job_id+'.json')
-            f = open(mdpath,'w')
-            f.write(mdcontent)
-            f.close()
+            xferjob.Job.todisk(app.config['PENDING_PATH'],job)
 
             # #See if can find path relative to Globus
             # file_data = job.files[0]
@@ -335,14 +332,19 @@ def uploadPOST():
             #Set's setup the transfer.
             globus.setupXfer(app.config['SENSITIVE_INFO'],job.globus_usr_name,job.globus_id,app.config['DATAVERSE_GLOBUS_ENDPOINT_ID'],job.job_id)
 
+            xferjob.Job.todisk(app.config['PENDING_PATH'],job)
+
             #Let's kickoff the transfer.
             globus.transferjob(tc,job,app.config['DATAVERSE_GLOBUS_ENDPOINT_ID'])
 
             #Let's re-save the job.
-            mdpath = Path('c:/temp/') / (job.job_id+'.json')
-            f = open(mdpath,'w')
-            f.write(mdcontent)
-            f.close()
+            xferjob.Job.todisk(app.config['PENDING_PATH'],job)
+            # dirpath = Path(app.config['PENDING_PATH'])
+            # dirpath.mkdir(parents=True,exist_ok=True)
+            # mdpath = dirpath  / (job.job_id+'.json')
+            # f = open(mdpath,'w')
+            # f.write(mdcontent)
+            # f.close()
 
 
             if app.config['UPLOAD_VIA_DV']:
@@ -369,56 +371,77 @@ def uploadPOST():
                 print("Upload finished!")
     return redirect('/upload')
 
-@app.route("/sharetest")
-def shareTest():
+#TODO: Also limit by Dataverse IP address(es)?
+@app.route("/pending")
+def pending():
+    if not 'key' in request.args: return('')
+    if not 'jid' in request.args: return('')
+
+    strtomatch = app.config['PENDING_KEY'] + datetime.datetime.now().strftime('%Y%m%d%H%M')
+    hash = hashlib.sha256(str.encode(strtomatch)).hexdigest()
+    print(hash)
+    if request.args.get('key') != hash:
+        print(request.args.get('key')+' != '+hash)
+        return('')
+
+    jobid = request.args.get('jid')
+    dirpath = Path(app.config['PENDING_PATH'])
+    mdpath = dirpath / (jobid+'.json')
+    data = ''
+    with open(mdpath,'r') as f:
+        data = f.read()
+    return(data)
+
+# @app.route("/sharetest")
+# def shareTest():
     
 
-    dvEP = app.config['DATAVERSE_GLOBUS_ENDPOINT_ID']
+#     dvEP = app.config['DATAVERSE_GLOBUS_ENDPOINT_ID']
 
-    # #get passcode from offline src.
-    # creds = ''
-    # try:
-    #     fr = open(app.config['SENSITIVE_INFO'],'r')
-    #     creds = fr.read()
-    #     fr.close()
-    # except:
-    #     return 'unable to retrieve dataverse local user credentials.'
+#     # #get passcode from offline src.
+#     # creds = ''
+#     # try:
+#     #     fr = open(app.config['SENSITIVE_INFO'],'r')
+#     #     creds = fr.read()
+#     #     fr.close()
+#     # except:
+#     #     return 'unable to retrieve dataverse local user credentials.'
 
-    # #Activate the dataverse endpoint to setup a share.
-    # try:
-    #     tc = getGlobusObj()
-    #     if 'Response' in str(type(tc)):
-    #         return tc
-    #     elif 'logged in' in str(tc):
-    #         return redirect('/sharetest')
-
-
-
-        # tr = globus.activateEndpoint(tc,globus_endpoint_id=dvEP,usr='synapse',pc=creds)
-
-    # except (globus_sdk.exc.TransferAPIError, KeyError) as e:
-    #     if 'Token is not active' in str(e):
-    #         return redirect(url_for('globus_login'))
-    #     return "There was an error activating the dataverse ep: "+str(e)
+#     # #Activate the dataverse endpoint to setup a share.
+#     # try:
+#     #     tc = getGlobusObj()
+#     #     if 'Response' in str(type(tc)):
+#     #         return tc
+#     #     elif 'logged in' in str(tc):
+#     #         return redirect('/sharetest')
 
 
-    # res = globus.nativeAPPGenerateRefreshToken(app.config['SENSITIVE_INFO'])
-    # print(res)
-    # globus_usr = 'deepwell@ksu.edu'
-    # globus_usr_id = '0a960cd0-01fd-449d-a825-bb3c0d28c71b'
-    globus.setupXfer(app.config['SENSITIVE_INFO'],job.globus_usr_name,job.globus_id,app.config['DATAVERSE_GLOBUS_ENDPOINT_ID'],job.job_id)
 
-    return("Success")
+#         # tr = globus.activateEndpoint(tc,globus_endpoint_id=dvEP,usr='synapse',pc=creds)
+
+#     # except (globus_sdk.exc.TransferAPIError, KeyError) as e:
+#     #     if 'Token is not active' in str(e):
+#     #         return redirect(url_for('globus_login'))
+#     #     return "There was an error activating the dataverse ep: "+str(e)
+
+
+#     # res = globus.nativeAPPGenerateRefreshToken(app.config['SENSITIVE_INFO'])
+#     # print(res)
+#     # globus_usr = 'deepwell@ksu.edu'
+#     # globus_usr_id = '0a960cd0-01fd-449d-a825-bb3c0d28c71b'
+#     globus.setupXfer(app.config['SENSITIVE_INFO'],job.globus_usr_name,job.globus_id,app.config['DATAVERSE_GLOBUS_ENDPOINT_ID'],job.job_id)
+
+#     return("Success")
    
 
-    # tr = globusDo(globus.getActivationRequirements,tc,globus_endpoint_id=app.config['DATAVERSE_GLOBUS_ENDPOINT_ID'])
-    # if 'Response' in str(type(tr)):
-    #     return tr
-    # elif 'logged in' in str(tr):
-    #     return redirect('/sharetest')
+#     # tr = globusDo(globus.getActivationRequirements,tc,globus_endpoint_id=app.config['DATAVERSE_GLOBUS_ENDPOINT_ID'])
+#     # if 'Response' in str(type(tr)):
+#     #     return tr
+#     # elif 'logged in' in str(tr):
+#     #     return redirect('/sharetest')
 
 
-    # return str(tr)
+#     # return str(tr)
 
 @app.route("/tobeocat")
 def toBeocat():
@@ -473,23 +496,23 @@ def toBeocat():
     return render_template('toBeocat.html',endpoints=endpoints,mruEndpointID=destEndpoint,guser=session[usr.settings.GLOBUS_USER],dvkey=session[usr.settings.DV_KEY],status_msg=msg)
 
 
-#More secure would be requestor to provide a filename + mru + filesize,
-#and webserver would find jobs with that matching file, and only return those.
-#Also restrict requests to dataverse server. IP. + debugging ip. / dyndns.
-@app.route("/pending")
-def pending():
-    # filelist = []
-    data = []
-    dir = Path(app.config['PENDING_PATH'])
-    for (dirpath,_dirnames,filenames) in os.walk(dir):
-        files = [Path(dirpath) / file for file in filenames]
-        for p in files:
-            with open(p,'r') as myfile:
-                d = myfile.read()
-            job = xferjob.Job.fromJSON(d)
-            data.append(job.toDict())
-        # filelist += path
-    return json.dumps(data,indent=1)
+# #More secure would be requestor to provide a filename + mru + filesize,
+# #and webserver would find jobs with that matching file, and only return those.
+# #Also restrict requests to dataverse server. IP. + debugging ip. / dyndns.
+# @app.route("/pending")
+# def pending():
+#     # filelist = []
+#     data = []
+#     dir = Path(app.config['PENDING_PATH'])
+#     for (dirpath,_dirnames,filenames) in os.walk(dir):
+#         files = [Path(dirpath) / file for file in filenames]
+#         for p in files:
+#             with open(p,'r') as myfile:
+#                 d = myfile.read()
+#             job = xferjob.Job.fromJSON(d)
+#             data.append(job.toDict())
+#         # filelist += path
+#     return json.dumps(data,indent=1)
 
 
 def get_message(msg):
@@ -519,7 +542,7 @@ def stream():
 
 
 def load_app_client():
-    fr = open(app.config['SENSITIVE_INFO'],'r')
-    vals = json.loads(fr.read())
-    fr.close()
+    with open(app.config['SENSITIVE_INFO'],'r') as fr:
+        vals = json.loads(fr.read())
+    app.config['PENDING_KEY'] = vals['PENDING_KEY']
     return globus_sdk.ConfidentialAppAuthClient(vals['GLOBUS_WEB_APP_CLIENT_ID'], vals['GLOBUS_WEB_APP_CLIENT_SECRET'])
