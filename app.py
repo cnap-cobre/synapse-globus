@@ -235,7 +235,7 @@ def setDVKey():
         dvkey = "*" + session[usr.settings.DV_KEY][-4:]
     return render_template('setdvkey.html',guser=session[usr.settings.GLOBUS_USER],dvkey=dvkey,status_msg=msg)
 
-    
+
 
 @app.route("/upload",methods=['POST'])
 def uploadPOST():
@@ -336,6 +336,11 @@ def uploadPOST():
             elif 'logged in' in str(find_result):
                 return redirect('/upload')
             
+
+            #Ideally, we get touple(list_of_matching_globus_paths,list_of_matching_globus_paths_1hour_off)
+            if len(find_result[0]) > 1:
+                app.msgs_for_client[session['session_id']] = idx/cnt
+
             #OK, we should have a globus path attached to our files.
             #Set's setup the transfer.
             globus.setupXfer(app.config['SENSITIVE_INFO'],job.globus_usr_name,job.globus_id,app.config['DATAVERSE_GLOBUS_ENDPOINT_ID'],job.job_id)
@@ -548,6 +553,64 @@ def stream():
             yield 'data: {}\n\n'.format(get_message(blah))
     return Response(stream_with_context(eventStream()), mimetype="text/event-stream")
 
+@app.route('/link',methods=['POST'])
+def link():
+
+    if 'session_id' not in session:
+        session['session_id'] = str(uuid.uuid4())
+        #Since the session variable only gets updated per full page refresh (via cookies)
+        #We need an update mechanism that updates more frequently for our server side updates
+        #During upload. So we store our ID via the app.mss_for_client variable.
+        app.msgs_for_client[session['session_id']] = 0
+
+    srcEP = request.form['selected_endpoint']
+    session[usr.settings.SRC_ENDPOINT] = srcEP
+
+    file_data = json.loads(request.form['file_list'])
+    job = xferjob.Job(xferjob.getID(session[usr.settings.DV_KEY]),session[usr.settings.GLOBUS_ID],session[usr.settings.GLOBUS_USER],session[usr.settings.DATASET_ID],str(uuid.uuid4()),srcEP,'')
+    session['job_id'] = job.job_id
+    max_size = 0
+    for fe in file_data:
+        #fn = fe['name']
+        path = fe['path']
+        mru = fe['mru']
+        sz = fe['size']
+        max_size += sz
+        fd = xferjob.FileData(path,sz,mru,'',[])
+        job.files.append(fd)
+    print("Max Size: "+str(max_size))
+    
+    job.todisk(app.config['PENDING_PATH'])
+
+    
+    #Now we need to find the globus (absolute) path of the files
+    #Dragged 'n dropped.
+    tc = getGlobusObj()
+    if 'Response' in str(type(tc)):
+        return tc
+    find_result = 'Not Ran'
+    try:
+        find_result = globus.find_globus_path_for_files(tc,job) #job.srcEndPoint,relativeRoot,file_name_to_find,file_data.mru,file_data.size)
+    except Exception as e:
+        find_result = str(e)
+        if 'AuthenticationFailed' in str(e):
+            return redirect('/upload')
+
+    msg = {}
+
+    if len(find_result[0]) == 1:
+        msg = {'msg': 'Globus Path Found! '+list(find_result[0].keys())[0]}
+    elif len(find_result[0]) > 1:
+        msg = {'msg': 'We found multiple paths from the selected endpoint that could contain the files you dropped. Please Select the correct one.','paths': list(find_result[0].keys())}
+    elif len(find_result[1]) == 1:
+        msg = {'msg': 'Globus Path Found! '+list(find_result[0].keys())[0]}
+    elif len(find_result[1]) > 1:
+        msg = {'msg': 'We found multiple paths from the selected endpoint that could contain the files you dropped. Please Select the correct one.','paths': list(find_result[1].keys())}
+    else:
+        msg = {'msg': "We could not find the files provided on the selected Globus endpoint. Are the files you dropped on the selected endpoint?"}
+    output = json.dumps(msg)
+    print(output)
+    return output
 
 def load_app_client():
     with open(app.config['SENSITIVE_INFO'],'r') as fr:

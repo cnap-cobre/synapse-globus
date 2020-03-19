@@ -28,20 +28,30 @@
         Using Dataverse Key %%dvkey%% <a href="setdvkey">Change</a>
       </div>
 
-      <div id="dropzone" effectAllowed="move" style="background-color: lightblue">
-        <h2>1. Drop files / folders here.</h2>
-         <!-- <input type="button" onclick="uploadFiles()" value="Upload"/> -->
-        <ul id="items" hidden></ul>
-        <h3><ul id="lbl_status"></ul><ul id="target_div">%%status_update%%</ul></h3>
-      </div>
-
       <div>
-        <h3>2. Choose Globus Source Endpoint of files:</h3> 
+        <h3>1. Choose Globus Source Endpoint of files:</h3> 
         <select id="endpoints">
           {% for key,value in endpoints.items() %}
             <option {% if mruEndpointID == key %} selected='selected' {% endif %} value='%%key%%'>%%value["display_name"]%%</option>
           {% endfor %}
         </select>
+      </div>
+
+      <div id="dropzone" effectAllowed="move" style="background-color: lightblue">
+        <h3>2. Drop files / folders here.</h3>
+         <!-- <input type="button" onclick="uploadFiles()" value="Upload"/> -->
+        <ul id="items" hidden></ul>
+        <h3><ul id="lbl_status"></ul><ul id="target_div">%%status_update%%</ul></h3>
+        <div id="finding" style="display: none;">
+          Finding Files in Globus Endpoint...
+          <button class="btn btn-primary" type="button" disabled>
+            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            Cancel
+          </button>
+        </div>
+        <div id="finding_result" style="display: none;">
+          <h3><label id="lbl_finding_result"></label></h3>
+        </div>
       </div>
 
       <div>
@@ -95,6 +105,8 @@ var targetContainer = document.getElementById("target_div");
         // targetContainer.innerHTML = e.data;
         $(".progress-bar").css("width",e.data).text(e.data);
       };
+
+
 
 
 // Drop handler function to get all files
@@ -175,6 +187,7 @@ async function readEntriesPromise(directoryReader) {
 var elDrop = document.getElementById('dropzone');
 var elItems = document.getElementById('items');
 var elStatus = document.getElementById('lbl_status');
+var elfinding = document.getElementById('finding');
 
 elDrop.addEventListener('dragover', function (event) {
     event.preventDefault();
@@ -188,7 +201,35 @@ elDrop.addEventListener('drop', async function (event) {
     console.debug('found '+files_found.length+'...');
     elStatus.innerHTML = 'Found '+files_found.length+' items.';
     elItems.innerHTML = JSON.stringify(files_found);
+    uploadFilesOnly();
 });
+
+function uploadFilesOnly()
+{
+      elfinding.style.display = "block";
+      // Reference: https://stackoverflow.com/questions/40963401/flask-dynamic-data-update-without-reload-page
+      $.ajax({
+        url: "/link",
+        type: "POST",
+        data: {
+          file_list: elItems.innerHTML,
+          selected_endpoint: document.getElementById("endpoints").value
+        },
+        success: function(response) {
+          var res = JSON.parse(response);
+          alert(res.msg);
+          $("#lbl_finding_result").text(res.msg)
+          elfinding.style.display = "none";
+        },
+        error: function(xhr) {
+          alert(xhr);
+          elfinding.style.display = "none";
+        }
+
+      })
+      
+}
+
 
 function uploadFiles()
 {
