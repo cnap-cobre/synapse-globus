@@ -7,7 +7,7 @@ import sys
 import json
 import datetime
 from dataverse import xferjob
-from typing import List
+from typing import List, Dict
 
 class GResultType(Enum):
     SUCCESS = 1
@@ -263,11 +263,39 @@ def activateEndpoint(tc:globus_sdk.TransferClient,globus_endpoint_id:str,usr:str
 def find_globus_path_for_files(tc:globus_sdk.TransferClient,files:xferjob.Job):
     filesRemaining:List[xferjob.FileData] = files.files.copy()
     
-    res = find_file(tc,files.srcEndPoint,'',filesRemaining)
-    if res == None:
-        return "Could not find at least one of the files you dragged in the selected Globus Source Endpoint. Are you sure it is there?"
-    #we've attached globus IDs to all the files now.
-    return "Success!"
+
+
+    res = find_file(tc,files.srcEndPoint,'',filesRemaining,False)
+
+    paths_found:Dict[str,int] = {}
+    dst_paths_found:Dict[str,int] = {}
+
+
+    
+    print('Could not the specified files...')
+    fd:xferjob.FileData
+    for fd in files.files:
+        for path in fd.globus_path:
+            if path in paths_found:
+                paths_found[path] += 1
+            else:
+                paths_found[path] = 1
+        for dst_path in fd.globus_path_DST_offset:
+            if dst_path in dst_paths_found:
+                dst_paths_found[dst_path] += 1
+            else:
+                dst_paths_found[dst_path] = 1
+    if len(paths_found) < 1 and len(dst_paths_found) < 1:
+        return "ERROR: Could not find at least one of the files you dragged in the selected Globus Source Endpoint. Are you sure it is there?"
+    
+
+    res = (paths_found,dst_paths_found)
+    return res
+    # if len(paths_found) > 0:
+    #     return paths_found
+
+    # #we've attached globus IDs to all the files now.
+    # return "Success!"
    
 
 def are_files_same(globus_path:str,globus_file,web_file:xferjob.FileData):
@@ -306,15 +334,22 @@ def are_files_same(globus_path:str,globus_file,web_file:xferjob.FileData):
                     #This is the directory!
                     print(header+'last modified matches! considered a match.')
                     return True
+                elif abs(int(found_last_modified)-int(selected_last_modified)) == 3600:
+                    #3/13/2020 - Either Globus/windows or browers do not take into account DST. So if the time
+                    #difference is 3600 seconds exactly. then we will make this a runner up option, if we can't find it
+                    #anywhere else.
+                    if not globus_path in web_file.globus_path_DST_offset:
+                        web_file.globus_path_DST_offset.append(globus_path)
+                    print(header+'Found a diff of 1 hour exactly between web and globus last modified. Maybe a DST issue. marking as runner up.')
                 else:
-                    print(header+'Abandoning - Last modified globus of '+found_last_modified+' <> browser last modified of '+web_file.mru)
+                    print(header+'Abandoning - Last modified globus of '+found_last_modified+' <> browser last modified of '+str(web_file.mru))
     return False
 
 
 def do_files_exist_in_dir(dir:globus_sdk.transfer.response.IterableTransferResponse,files:xferjob.Job):
     return False
 
-def find_file(tc:globus_sdk.TransferClient,srcEP:str, relativeDir:str,filesRemaining:List[xferjob.FileData]):
+def find_file(tc:globus_sdk.TransferClient,srcEP:str, relativeDir:str,filesRemaining:List[xferjob.FileData],quit_when_found=True):
     if relativeDir == '':
         relativeDir = "/~/"
     dlr = tc.operation_ls(srcEP,path=relativeDir)
@@ -326,9 +361,12 @@ def find_file(tc:globus_sdk.TransferClient,srcEP:str, relativeDir:str,filesRemai
         elif element['type'] == 'file':
             for fd in filesRemaining:
                 if are_files_same(relativeDir,element,fd) == True:
-                    fd.globus_path = relativeDir+fd.path.rsplit('/',1)[1]
+                    dressed_path = relativeDir+fd.path.rsplit('/',1)[1]
+                    if not dressed_path in fd.globus_path:
+                        fd.globus_path.append(dressed_path)
                     filesRemaining.remove(fd)
-                    if len(filesRemaining) == 0: return True
+                    if quit_when_found == True:
+                        if len(filesRemaining) == 0: return True
             # if element['name'] == fileName:
             #     #Check file size & last modified!
             #     g = 6
@@ -359,9 +397,10 @@ def find_file(tc:globus_sdk.TransferClient,srcEP:str, relativeDir:str,filesRemai
     for dir_element in todo:
         newDir = relativeDir+dir_element['name']+'/'
         print('Delving '+newDir)
-        result =  find_file(tc,srcEP,newDir,filesRemaining)
-        if result != None:
-            return result
+        result = find_file(tc,srcEP,newDir,filesRemaining)
+        if quit_when_found == True:
+            if result != None:
+                return result
     return None
 
 

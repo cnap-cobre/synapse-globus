@@ -265,7 +265,7 @@ def uploadPOST():
     usr.updateDisk(Path(app.config['USER_SETTINGS_PATH']),session)
     
 
-    job = xferjob.Job(xferjob.getID(session[usr.settings.DV_KEY]),session[usr.settings.GLOBUS_ID],session[usr.settings.GLOBUS_USER],session[usr.settings.DATASET_ID],str(uuid.uuid4()),srcEP)
+    job = xferjob.Job(xferjob.getID(session[usr.settings.DV_KEY]),session[usr.settings.GLOBUS_ID],session[usr.settings.GLOBUS_USER],session[usr.settings.DATASET_ID],str(uuid.uuid4()),srcEP,'')
 
     desc = request.form['description']
     tags = request.form['tags'].split(',')
@@ -304,7 +304,7 @@ def uploadPOST():
                 job.files.append(fd)
             print("Max Size: "+str(max_size))
           
-            xferjob.Job.todisk(app.config['PENDING_PATH'],job)
+            job.todisk(app.config['PENDING_PATH'])
 
             # #See if can find path relative to Globus
             # file_data = job.files[0]
@@ -322,7 +322,15 @@ def uploadPOST():
             tc = getGlobusObj()
             if 'Response' in str(type(tc)):
                 return tc
-            find_result = globus.find_globus_path_for_files(tc,job) #job.srcEndPoint,relativeRoot,file_name_to_find,file_data.mru,file_data.size)
+            find_result = 'Not Ran'
+            try:
+                find_result = globus.find_globus_path_for_files(tc,job) #job.srcEndPoint,relativeRoot,file_name_to_find,file_data.mru,file_data.size)
+            except Exception as e:
+                find_result = str(e)
+                if 'AuthenticationFailed' in str(e):
+                    return redirect('/upload')
+
+            
             if 'Response' in str(type(find_result)):
                 return find_result
             elif 'logged in' in str(find_result):
@@ -332,13 +340,13 @@ def uploadPOST():
             #Set's setup the transfer.
             globus.setupXfer(app.config['SENSITIVE_INFO'],job.globus_usr_name,job.globus_id,app.config['DATAVERSE_GLOBUS_ENDPOINT_ID'],job.job_id)
 
-            xferjob.Job.todisk(app.config['PENDING_PATH'],job)
+            job.todisk(app.config['PENDING_PATH'])
 
             #Let's kickoff the transfer.
             globus.transferjob(tc,job,app.config['DATAVERSE_GLOBUS_ENDPOINT_ID'])
 
             #Let's re-save the job.
-            xferjob.Job.todisk(app.config['PENDING_PATH'],job)
+            job.todisk(app.config['PENDING_PATH'])
             # dirpath = Path(app.config['PENDING_PATH'])
             # dirpath.mkdir(parents=True,exist_ok=True)
             # mdpath = dirpath  / (job.job_id+'.json')
