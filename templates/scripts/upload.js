@@ -1,101 +1,5 @@
-<!-- Dev -->
-<!-- <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script> -->
 
-<!-- Prod -->
-<!-- <script src="https://cdn.jsdelivr.net/npm/vue"></script> -->
-
-<!-- <html>  
-    <body>  
-       <form action = "http://localhost:5000/upload" method = "post">  
-          <table>  
-         <tr><td>Name</td>  
-         <td><input type ="text" name ="uname"></td></tr>  
-         <tr><td>Password</td>  
-         <td><input type ="password" name ="pass"></td></tr>  
-         <tr><td><input type = "submit"></td></tr>  
-     </table>  
-       </form>  
-    </body>  
- </html>   -->
-
-{% extends 'base.html' %}
-{% block container %}
-      <div>
-        Using Globus ID %%guser%% <a href="globus_logout">Change</a>
-      </div>
-
-      <div>
-        Using Dataverse Key %%dvkey%% <a href="setdvkey">Change</a>
-      </div>
-
-      <div>
-        <h3>1. Choose Globus Source Endpoint of files:</h3> 
-        <select id="endpoints">
-          {% for key,value in endpoints.items() %}
-            <option {% if mruEndpointID == key %} selected='selected' {% endif %} value='%%key%%'>%%value["display_name"]%%</option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <div id="dropzone" effectAllowed="move" style="background-color: lightblue">
-        <h3>2. Drop files / folders here.</h3>
-         <!-- <input type="button" onclick="uploadFiles()" value="Upload"/> -->
-        <ul id="items" hidden></ul>
-        <h3><ul id="lbl_status"></ul><ul id="target_div">%%status_update%%</ul></h3>
-        <div id="finding" style="display: none;">
-          Finding Files in Globus Endpoint...
-          <button class="btn btn-primary" type="button" disabled>
-            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-            Cancel
-          </button>
-        </div>
-        <div id="finding_result" style="display: none;">
-          <h3><label id="lbl_finding_result"></label></h3>
-        </div>
-      </div>
-
-      <div>
-        <h3>3. Pick Lab:</h3>
-        <select  id="lab_type">
-          {% for key,value in labs.items() %}
-            <option {% if mruLab == value.id_num() %} selected='selected' {% endif %} value='%%value.id_num()%%'>%%value.display_name()%%</option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <div>
-        <h3>4. Upload data to this dataset:</h3>
-        <select  id="dataset_id">
-          {% for rec in datasets %}
-            <option {% if mruDataset == rec['entity_id'] %} selected='selected' {% endif %} value='%%rec['entity_id']%%'>%%rec['name']%%</option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <div>
-        <h3>5. (Optional) Please enter a search-able description to apply to each file:</h3>
-        <textarea id="description" rows="5", cols="60">
-          Enter details here...
-        </textarea><br>
-        Note: If you have selected a lab in step 2, Information found in the directory / file name of each file will be automatically added to the description.
-      </div>
-
-      <div>
-        <h3>6. (Optional) Please enter any relevant keywords (separated by commas) to apply to each file:</h3>
-        <input type="text" id="tags"/>
-      </div>
-
-      <br>
-           
-      <div class="progress">
-        <div class="progress-bar" role="progressbar" aria-valuenow="70" aria-valuemin="0" aria-valuemax="100" style="width:0%">
-        </div>
-      </div>
-      <br>
-      <input type="button" onclick="uploadFiles()" value="Upload"/>
-      <!-- <div class="spinner-border" role="status">
-        <span class="sr-only">Working...</span>
-      </div> -->
+<script src="https://code.jquery.com/jquery-3.4.1.min.js" integrity="sha384-vk5WoKIaW/vJyUAd9n/wmopsmNhiy+L2Z+SBxGYnUkunIxVxAv/UtMOhba/xskxh" crossorigin="anonymous"></script>
 <script>
 
 
@@ -216,7 +120,6 @@ function uploadFilesOnly()
           selected_endpoint: document.getElementById("endpoints").value
         },
         success: function(response) {
-          debugger;
           var res = JSON.parse(response);
           alert(res.msg);
           $("#lbl_finding_result").text(res.msg)
@@ -254,5 +157,3 @@ function uploadFiles()
       });
 }
 </script>
-
-{% endblock %}
