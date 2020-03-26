@@ -96,8 +96,10 @@
       <!-- <div class="spinner-border" role="status">
         <span class="sr-only">Working...</span>
       </div> -->
-<script>
 
+
+<script type="text/javascript" src="static/upload.js"></script>
+<!-- <script type="text/javascript">
 
 var targetContainer = document.getElementById("target_div");
       var eventSource = new EventSource("/stream")
@@ -216,7 +218,6 @@ function uploadFilesOnly()
           selected_endpoint: document.getElementById("endpoints").value
         },
         success: function(response) {
-          debugger;
           var res = JSON.parse(response);
           alert(res.msg);
           $("#lbl_finding_result").text(res.msg)
@@ -253,6 +254,6 @@ function uploadFiles()
         console.error(JSON.stringify(e.message));
       });
 }
-</script>
+</script> -->
 
 {% endblock %}

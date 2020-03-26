@@ -1,65 +1,93 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-   
-    <link rel="shortcut icon" href="%% url_for('static', filename='favicon_96_PxV_icon.ico') %%" type="image/x-icon">
-    <link rel="icon" href="%% url_for('static', filename='favicon-96.png') %%" sizes="96x96" type="image/png">
+    <link
+      rel="shortcut icon"
+      href="%% url_for('static', filename='favicon_96_PxV_icon.ico') %%"
+      type="image/x-icon"
+    />
+    <link
+      rel="icon"
+      href="%% url_for('static', filename='favicon-96.png') %%"
+      sizes="96x96"
+      type="image/png"
+    />
 
     <title>Synapse</title>
 
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
-    <!-- <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script> -->
-    <script src="https://code.jquery.com/jquery-3.4.1.min.js" integrity="sha384-vk5WoKIaW/vJyUAd9n/wmopsmNhiy+L2Z+SBxGYnUkunIxVxAv/UtMOhba/xskxh" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+      integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+      crossorigin="anonymous"
+    />
+    <!-- <script src="https://code.jquery.com/jquery-3.4.1.min.js" integrity="sha384-vk5WoKIaW/vJyUAd9n/wmopsmNhiy+L2Z+SBxGYnUkunIxVxAv/UtMOhba/xskxh" crossorigin="anonymous"></script> -->
+    <script
+      src="https://code.jquery.com/jquery-3.4.1.js"
+      integrity="sha384-mlceH9HlqLp7GMKHrj5Ara1+LvdTZVMx4S1U43/NxCvAkzIo8WJ0FE7duLel3wVo"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+      integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"
+      integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
+      crossorigin="anonymous"
+    ></script>
 
     <style type="text/css">
-        body {
-            background-image: url("%% url_for('static', filename='anderson-hall-blur.jpg') %%");
-            background-repeat: no-repeat;
-            background-size:cover;
-        }
+      body {
+        background-image: url("%% url_for('static', filename='anderson-hall-blur.jpg') %%");
+        background-repeat: no-repeat;
+        background-size: cover;
+      }
 
-        div.header {
-        font-family: Arial, Helvetica, sans-serif ;
-		font-size: 3.1em ;
-		width: 730px ;
-		padding: 10px ;
-		background-color: transparent ;
-		color: white ;
-        border: 0px solid black ;
+      div.header {
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 3.1em;
+        width: 730px;
+        padding: 10px;
+        background-color: transparent;
+        color: white;
+        border: 0px solid black;
         vertical-align: middle;
         display: -webkit-flex;
         display: flex;
         align-items: center;
-        }
-      
-        div.container {
-		font-family: Arial, Helvetica, sans-serif ;
-		font-size: 1.1em ;
-		width: 730px ;
-		margin-left: auto ;
-		margin-right: auto ;
-		padding: 20px ;
-		background-color: white ;
-		color: black ;
-        border: 1px solid black ;
-        border-radius: 16px ;
-	}
+      }
 
+      div.container {
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 1.1em;
+        width: 730px;
+        margin-left: auto;
+        margin-right: auto;
+        padding: 20px;
+        background-color: white;
+        color: black;
+        border: 1px solid black;
+        border-radius: 16px;
+      }
     </style>
-
   </head>
   <body>
     <div class="header">
-        <img width="75" height="75" src="%% url_for('static', filename='synapse_logo.png') %%"> &nbsp; Synapse
+      <img
+        width="75"
+        height="75"
+        src="%% url_for('static', filename='synapse_logo.png') %%"
+      />
+      &nbsp; Synapse
     </div>
     <noscript>
       You need to enable JavaScript to run this app.
     </noscript>
     <div class="container">
-        {% block container %}{% endblock %}
+      {% block container %}{% endblock %}
     </div>
   </body>
 </html>
