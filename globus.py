@@ -309,23 +309,18 @@ def find_globus_path_for_files(tc: globus_sdk.TransferClient, files: xferjob.Job
 
 def are_files_same(globus_path: str, globus_file, web_file: xferjob.FileData):
     # TODO: need to take into account file path?!
-    fileName = web_file.path
-    if web_file.path[0] == '/':
-        fileName = web_file.path[1:]
-    else:
-        # Does the relative path we have with the browser file
-        # exist in the abs path we find in globus?
-        if web_file.path in globus_path+fileName:
-            hh = 'Woohoo!'
-
+    fileName = web_file.path[web_file.path.rfind('/'):].replace('/','')
+    header = fileName+' at '+globus_path+': '
     if globus_file['type'] != 'file':
         return False
     if globus_file['name'] == fileName:
-        # Check file size & last modified!
-        g = 6
-        header = fileName+' at '+globus_path+': '
         print(header+'Name Matches!')
 
+        #Ensure browser relative path exists inside of Globus abs path.
+        if not web_file.path in globus_path+fileName:
+            print(header+'Browser path not subset of Globus Path:'+web_file.path+' ne in '+globus_path+fileName)
+            return False
+        # Check file size & last modified!
         globus_bytes = globus_file['size']
         if globus_bytes == web_file.size:
             # file name and size match. let's check last modified...

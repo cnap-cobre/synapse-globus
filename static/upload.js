@@ -1,10 +1,8 @@
 var targetContainer = document.getElementById("target_div");
 var eventSource = new EventSource("/stream");
-eventSource.onmessage = function(e) {
+eventSource.onmessage = function (e) {
   // targetContainer.innerHTML = e.data;
-  $(".progress-bar")
-    .css("width", e.data)
-    .text(e.data);
+  $(".progress-bar").css("width", e.data).text(e.data);
 };
 
 // Drop handler function to get all files
@@ -35,19 +33,19 @@ async function getAllFileEntries(dataTransferItemList) {
       //console.debug('right before entry.file.');
       filesToProcess += 1;
       entry.file(
-        function(fileobj) {
+        function (fileobj) {
           //fileobj = f;
           var data_we_want = {
             name: fileobj.name,
             mru: fileobj.lastModified,
             size: fileobj.size,
-            path: entry.fullPath
+            path: entry.fullPath,
           };
           //console.debug(data_we_want);
           fileEntries.push(data_we_want);
           filesToProcess -= 1;
         },
-        function() {
+        function () {
           console.debug("err");
           filesToProcess -= 1;
         }
@@ -62,7 +60,7 @@ async function getAllFileEntries(dataTransferItemList) {
   }
   //We need to wait for all the callbacks to complete.
   while (filesToProcess > 0) {
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 500));
   }
   //console.debug('End of getAllFileEntries length: '+fileEntries.length);
   return fileEntries;
@@ -96,12 +94,12 @@ var elStatus = document.getElementById("lbl_status");
 var elfinding = document.getElementById("finding");
 var elfindingResult = document.getElementById("finding_result");
 
-elDrop.addEventListener("dragover", function(event) {
+elDrop.addEventListener("dragover", function (event) {
   event.preventDefault();
   elItems.innerHTML = 0;
 });
 
-elDrop.addEventListener("drop", async function(event) {
+elDrop.addEventListener("drop", async function (event) {
   event.preventDefault();
   console.debug(event);
   let files_found = await getAllFileEntries(event.dataTransfer.items);
@@ -119,19 +117,21 @@ function uploadFilesOnly() {
     type: "POST",
     data: {
       file_list: elItems.innerHTML,
-      selected_endpoint: document.getElementById("endpoints").value
+      selected_endpoint: document.getElementById("endpoints").value,
     },
-    success: function(response) {
+    success: function (response) {
       var res = JSON.parse(response);
-      alert(res.msg);
-      $("#lbl_finding_result").text(res.msg);
+      // alert(res);
+      // alert(res.paths[0]);
+      $("#lbl_finding_result").text(res.paths[0]);
+      $("#lbl_path_msg").text(res.msg);
       elfindingResult.style.display = "block";
       elfinding.style.display = "none";
     },
-    error: function(xhr) {
+    error: function (xhr) {
       alert(xhr);
       elfinding.style.display = "none";
-    }
+    },
   });
 }
 
@@ -146,15 +146,19 @@ function uploadFiles() {
   formData.append("dataset_id", document.getElementById("dataset_id").value);
   formData.append("description", document.getElementById("description").value);
   formData.append("tags", document.getElementById("tags").value);
+  formData.append(
+    "src_endpoint_path",
+    document.getElementById("lbl_finding_result").value
+  );
   fetch("http://localhost:5000/upload", {
     method: "POST",
-    body: formData
+    body: formData,
   })
-    .then(res => res.json())
-    .then(res => {
+    .then((res) => res.json())
+    .then((res) => {
       console.log("done uploading", res);
     })
-    .catch(e => {
+    .catch((e) => {
       console.error(JSON.stringify(e.message));
     });
 }

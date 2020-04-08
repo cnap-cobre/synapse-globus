@@ -1,21 +1,23 @@
 import os
+
+
 class Metadata(object):
-    
-    def extract(self,filename:str):
+
+    def extract(self, filepath: str):
         return {}
 
     def get_init_questions(self):
         return []
 
-    def set_init_questions(self,questions:dict):
+    def set_init_questions(self, questions: dict):
         return
 
     def display_name(self):
         return "N/A"
 
     def id_num(self):
-        #This should NEVER CHANGE in Subclasses! It's what the user
-        #chooses via script to select the lab number
+        # This should NEVER CHANGE in Subclasses! It's what the user
+        # chooses via script to select the lab number
         return 0
 
     def get_extractors(self):
@@ -27,6 +29,7 @@ class Metadata(object):
         result[self.id_num()] = self
         return result
 
+
 class Travis(Metadata):
     EXPERIMENT_NAME = "Experiment Name (Blank for none): "
     init_questions = {}
@@ -35,8 +38,8 @@ class Travis(Metadata):
         return 'Travis Lab'
 
     def id_num(self):
-        #This should NEVER CHANGE in Subclasses! It's what the user
-        #chooses via script to select the lab number
+        # This should NEVER CHANGE in Subclasses! It's what the user
+        # chooses via script to select the lab number
         return 1
 
     def get_init_questions(self):
@@ -44,12 +47,12 @@ class Travis(Metadata):
         result.append(self.EXPERIMENT_NAME)
         return result
 
-    def set_init_questions(self,questions:dict):
+    def set_init_questions(self, questions: dict):
         self.init_questions = questions
 
-    def extract(self,filepath:str):
-        filename = os.path.basename(filepath)
-        #Check to see if filename matches format gb104847.111:
+    def extract(self, filepath: str):
+        filename: str = os.path.basename(filepath)
+        # Check to see if filename matches format gb104847.111:
         #   gb: refers to the experiment name (we progress down the alphabet, gb, gc, gd, etc...)
         #   1: refers to squad (we have 24 testing chambers and more than 24 rats and so they get
         #       ran in different squads at different times of the day).  Recently, we've kept this
@@ -59,13 +62,15 @@ class Travis(Metadata):
         #       different experiment numbers).
         #   47: refers to the subject ID (starting at '01' for the first rat in a given batch
         #   111: after the period refers to the session number.
-        if len(filename) != 12: return
-        if filename[8] != '.': return
+        if len(filename) != 12:
+            return
+        if filename[8] != '.':
+            return
         try:
             session = int(filename[9:])
         except ValueError:
-             return
-        
+            return
+
         result = {}
         result['experiment'] = filename[0:1]
         result['squad'] = int(filename[2:3])
