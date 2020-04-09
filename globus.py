@@ -309,16 +309,17 @@ def find_globus_path_for_files(tc: globus_sdk.TransferClient, files: xferjob.Job
 
 def are_files_same(globus_path: str, globus_file, web_file: xferjob.FileData):
     # TODO: need to take into account file path?!
-    fileName = web_file.path[web_file.path.rfind('/'):].replace('/','')
+    fileName = web_file.path[web_file.path.rfind('/'):].replace('/', '')
     header = fileName+' at '+globus_path+': '
     if globus_file['type'] != 'file':
         return False
     if globus_file['name'] == fileName:
         print(header+'Name Matches!')
 
-        #Ensure browser relative path exists inside of Globus abs path.
+        # Ensure browser relative path exists inside of Globus abs path.
         if not web_file.path in globus_path+fileName:
-            print(header+'Browser path not subset of Globus Path:'+web_file.path+' ne in '+globus_path+fileName)
+            print(header+'Browser path not subset of Globus Path:' +
+                  web_file.path+' ne in '+globus_path+fileName)
             return False
         # Check file size & last modified!
         globus_bytes = globus_file['size']
@@ -430,8 +431,9 @@ def transferjob(tc: globus_sdk, job: xferjob.Job, destEP: str):
         tc, job.srcEndPoint, destEP, label='Synapse generated, from Dataverse', sync_level='mtime', preserve_timestamp=True)
     f: xferjob.FileData
     for f in job.files:
-        tdata.add_item(f.globus_path, f.path)
+        dest_path = f.path[1:]
+        tdata.add_item(f.selected_globus_path, dest_path)
     tresult = tc.submit_transfer(tdata)
     print('task_id='+tresult['task_id'])
-
+    # job.globus_task_id = tresult['task_id']
     return tresult

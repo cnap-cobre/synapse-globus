@@ -148,7 +148,7 @@ function uploadFiles() {
   formData.append("tags", document.getElementById("tags").value);
   formData.append(
     "src_endpoint_path",
-    document.getElementById("lbl_finding_result").value
+    document.getElementById("lbl_finding_result").textContent
   );
   fetch("http://localhost:5000/upload", {
     method: "POST",

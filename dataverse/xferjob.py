@@ -21,8 +21,9 @@ class FileData:
     # difference is 3600 seconds exactly. then we will make this a runner up option, if we can't find it
     # anywhere else.
     globus_path_DST_offset: List[str] = []
+    time_added = ''
 
-    def __init__(self, filepath: str, filesize: int, filemru: int, filedesc: str, tag_data, globus_path: List[str] = [], dst_offset_path: List[str] = [], selected_gloubs_path: str = ''):
+    def __init__(self, filepath: str, filesize: int, filemru: int, filedesc: str, tag_data, globus_path: List[str] = [], dst_offset_path: List[str] = [], selected_gloubs_path: str = '', time_added: str = ''):
         self.path = filepath
         self.size = filesize
         self.mru = filemru
@@ -31,13 +32,22 @@ class FileData:
         self.globus_path = globus_path
         self.globus_path_DST_offset = dst_offset_path
         self.selected_globus_path = selected_gloubs_path
+        self.time_added = time_added
 
     def toJSON(self):
         formatted = self.toDict()
         return json.dumps(formatted)
 
     def toDict(self):
-        return {'path': self.path, 'size': self.size, 'mru': self.mru, 'desc': self.desc, 'tags': self.tags, 'gpath': self.globus_path, 'dstpath': self.globus_path_DST_offset, 'selected_globus_path': self.selected_globus_path}
+        return {'path': self.path,
+                'size': self.size,
+                'mru': self.mru,
+                'desc': self.desc,
+                'tags': self.tags,
+                'gpath': self.globus_path,
+                'dstpath': self.globus_path_DST_offset,
+                'selected_globus_path': self.selected_globus_path,
+                'time_added': self.time_added}
 
     @staticmethod
     def fromDict(dd):
@@ -48,7 +58,8 @@ class FileData:
                         tag_data=dd['tags'],
                         globus_path=dd['gpath'],
                         dst_offset_path=dd['dstpath'],
-                        selected_gloubs_path=dd['selected_globus_path'])
+                        selected_gloubs_path=dd['selected_globus_path'],
+                        time_added=dd['time_added'])
 
     @staticmethod
     def fromJSON(data):
@@ -64,10 +75,11 @@ class Job:
     files: List[FileData] = []
     job_id = ''
     srcEndPoint = ''
+    dest_endpoint = ''
     globus_task_id = ''
     job_size_bytes: int = 0
 
-    def __init__(self, dataverse_user_id, globus_user_id, dataverse_dataset_id, job_id, globus_usr_name: str, srcEndPoint: str, globus_task_id: str = '', job_size_bytes: int = 0):
+    def __init__(self, dataverse_user_id, globus_user_id, dataverse_dataset_id, job_id, globus_usr_name: str, srcEndPoint: str, globus_task_id: str = '', job_size_bytes: int = 0, dest_endpoint: str = ''):
         self.dv_user_id = dataverse_user_id
         self.globus_id = globus_user_id
         self.globus_usr_name = globus_usr_name
@@ -76,9 +88,11 @@ class Job:
         self.srcEndPoint = srcEndPoint
         self.globus_task_id = globus_task_id
         self.job_size_bytes = job_size_bytes
+        self.dest_endpoint = dest_endpoint
+        self.files = []
 
     def toJSON(self):
-        return json.dumps(self.toDict())
+        return json.dumps(self.toDict(), indent=4, sort_keys=True)
 
     def toDict(self):
         file_list = []
@@ -92,6 +106,7 @@ class Job:
                 'srcEndPoint': self.srcEndPoint,
                 'gtask_id': self.globus_task_id,
                 'job_size': self.job_size_bytes,
+                'dest_endpoint': self.dest_endpoint,
                 'filedata': file_list}
 
     def todisk(self, directory: str):
@@ -103,7 +118,7 @@ class Job:
             f.write(data)
 
     @staticmethod
-    def fromdisk(job_id: str, directory: str) -> xferjob.Job:
+    def fromdisk(job_id: str, directory: str) -> Job:
         dirpath = Path(directory)
         mdpath = dirpath / (job_id+'.json')
         with open(mdpath, 'r') as f:
@@ -120,7 +135,8 @@ class Job:
                 globus_usr_name=dd['gusr'],
                 srcEndPoint=dd['srcEndPoint'],
                 globus_task_id=dd['gtask_id'],
-                job_size_bytes=dd['job_size'])
+                job_size_bytes=dd['job_size'],
+                dest_endpoint=dd['dest_endpoint'])
 
         for f in dd['filedata']:
             fo = FileData.fromDict(f)

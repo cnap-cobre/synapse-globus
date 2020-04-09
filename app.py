@@ -289,7 +289,7 @@ def uploadPOST():
 
     fd: xferjob.FileData
     for fd in job.files:
-        fn2 = os.path.basename(fd.path)
+        fn = os.path.basename(fd.path)
         extra_metadata = metadata_extractor.extract(fn)
         tags2 = list(tags)
         filedesc = desc+" "
@@ -297,9 +297,10 @@ def uploadPOST():
             for em in extra_metadata.keys():
                 tags2.append(em + " "+(str(extra_metadata[em])))
                 filedesc += em + " "+(str(extra_metadata[em]))+", "
-        fd.filedesc = filedesc
+        fd.desc = filedesc.strip()
         fd.tags = tags2
-
+        fd.selected_globus_path = request.form['src_endpoint_path']+fd.path
+        fd.selected_globus_path = fd.selected_globus_path.replace('//', '/')
         job.todisk(app.config['PENDING_PATH'])
 
         # # #See if can find path relative to Globus
@@ -335,8 +336,8 @@ def uploadPOST():
 
         # OK, we should have a globus path attached to our files.
         # Set's setup the transfer.
-        globus.setupXfer(app.config['SENSITIVE_INFO'], job.globus_usr_name,
-                         job.globus_id, app.config['DATAVERSE_GLOBUS_ENDPOINT_ID'], job.job_id)
+        job.dest_endpoint = globus.setupXfer(app.config['SENSITIVE_INFO'], job.globus_usr_name,
+                                             job.globus_id, app.config['DATAVERSE_GLOBUS_ENDPOINT_ID'], job.job_id)
 
         # fd:xferjob.FileData
         # for fd in jobs.files:
@@ -345,10 +346,24 @@ def uploadPOST():
         job.todisk(app.config['PENDING_PATH'])
 
         # Let's kickoff the transfer.
-        globus.transferjob(
-            tc, job, app.config['DATAVERSE_GLOBUS_ENDPOINT_ID'])
+        tc = getGlobusObj()
+        if 'Response' in str(type(tc)):
+            return tc
+        try:
+            task_id = globus.transferjob(
+                tc, job, job.dest_endpoint)
+            job.globus_task_id = task_id
+        except Exception as e:
+            find_result = str(e)
+            if 'AuthenticationFailed' in str(e):
+                return redirect('/upload')
 
-        # Let's re-save the job.
+        if 'Response' in str(type(task_id)):
+            return task_id
+        elif 'logged in' in str(task_id):
+            return redirect('/upload')
+
+        # Let's re-save the job to capture the task_id
         job.todisk(app.config['PENDING_PATH'])
         # dirpath = Path(app.config['PENDING_PATH'])
         # dirpath.mkdir(parents=True,exist_ok=True)
