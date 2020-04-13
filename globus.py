@@ -434,6 +434,7 @@ def transferjob(tc: globus_sdk, job: xferjob.Job, destEP: str):
         dest_path = f.path[1:]
         tdata.add_item(f.selected_globus_path, dest_path)
     tresult = tc.submit_transfer(tdata)
-    print('task_id='+tresult['task_id'])
+    print(str(tresult))
+    job.log("Transfer Job "+tresult['code']+": "+tresult['message']+" Submission ID="+tresult['submission_id']+", requestID="+tresult['request_id'])
     # job.globus_task_id = tresult['task_id']
     return tresult

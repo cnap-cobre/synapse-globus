@@ -7,6 +7,7 @@ import hashlib
 import uuid
 from pathlib import Path
 from typing import List
+from typing import Dict
 
 
 class FileData:
@@ -78,8 +79,9 @@ class Job:
     dest_endpoint = ''
     globus_task_id = ''
     job_size_bytes: int = 0
+    msglog: List[str] = []
 
-    def __init__(self, dataverse_user_id, globus_user_id, dataverse_dataset_id, job_id, globus_usr_name: str, srcEndPoint: str, globus_task_id: str = '', job_size_bytes: int = 0, dest_endpoint: str = ''):
+    def __init__(self, dataverse_user_id, globus_user_id, dataverse_dataset_id, job_id, globus_usr_name: str, srcEndPoint: str, globus_task_id: str = '', job_size_bytes: int = 0, dest_endpoint: str = '', log: List[str] = []):
         self.dv_user_id = dataverse_user_id
         self.globus_id = globus_user_id
         self.globus_usr_name = globus_usr_name
@@ -89,7 +91,11 @@ class Job:
         self.globus_task_id = globus_task_id
         self.job_size_bytes = job_size_bytes
         self.dest_endpoint = dest_endpoint
+        self.msglog = log
         self.files = []
+
+    def log(self, msg: str):
+        self.msglog.append(str(datetime.datetime.now())+' '+msg)
 
     def toJSON(self):
         return json.dumps(self.toDict(), indent=4, sort_keys=True)
@@ -107,6 +113,7 @@ class Job:
                 'gtask_id': self.globus_task_id,
                 'job_size': self.job_size_bytes,
                 'dest_endpoint': self.dest_endpoint,
+                'log': self.msglog,
                 'filedata': file_list}
 
     def todisk(self, directory: str):
@@ -136,7 +143,9 @@ class Job:
                 srcEndPoint=dd['srcEndPoint'],
                 globus_task_id=dd['gtask_id'],
                 job_size_bytes=dd['job_size'],
-                dest_endpoint=dd['dest_endpoint'])
+                dest_endpoint=dd['dest_endpoint'],
+                log=dd['log']
+                )
 
         for f in dd['filedata']:
             fo = FileData.fromDict(f)

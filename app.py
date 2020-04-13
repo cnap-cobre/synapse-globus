@@ -358,7 +358,12 @@ def uploadPOST():
             if 'AuthenticationFailed' in str(e):
                 return redirect('/upload')
 
-        if 'Response' in str(type(task_id)):
+        if 'TransferResponse' in str(type(task_id)):
+            if task_id['code'] == 'Accepted':
+                job.globus_task_id = task_id['task_id']
+            else:
+                return "Could not successfully submit task: "+str(task_id)
+        elif 'Response' in str(type(task_id)):
             return task_id
         elif 'logged in' in str(task_id):
             return redirect('/upload')
