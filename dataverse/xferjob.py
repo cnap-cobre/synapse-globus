@@ -80,6 +80,7 @@ class Job:
     globus_task_id = ''
     job_size_bytes: int = 0
     msglog: List[str] = []
+    notified: bool = False
 
     def __init__(self, dataverse_user_id, globus_user_id, dataverse_dataset_id, job_id, globus_usr_name: str, srcEndPoint: str, globus_task_id: str = '', job_size_bytes: int = 0, dest_endpoint: str = '', log: List[str] = []):
         self.dv_user_id = dataverse_user_id
@@ -96,6 +97,9 @@ class Job:
 
     def log(self, msg: str):
         self.msglog.append(str(datetime.datetime.now())+' '+msg)
+
+    def loglist(self, msgs: List[str]):
+        self.msglog += msgs
 
     def toJSON(self):
         return json.dumps(self.toDict(), indent=4, sort_keys=True)
@@ -114,6 +118,7 @@ class Job:
                 'job_size': self.job_size_bytes,
                 'dest_endpoint': self.dest_endpoint,
                 'log': self.msglog,
+                'notified': self.notified,
                 'filedata': file_list}
 
     def todisk(self, directory: str):
@@ -128,7 +133,11 @@ class Job:
     def fromdisk(job_id: str, directory: str) -> Job:
         dirpath = Path(directory)
         mdpath = dirpath / (job_id+'.json')
-        with open(mdpath, 'r') as f:
+        return Job.from_disk_by_filepath(str(mdpath))
+
+    @staticmethod
+    def from_disk_by_filepath(filepath: str) -> Job:
+        with open(filepath, 'r') as f:
             raw: str = f.read()
         d = json.loads(raw)
         return Job.fromDict(d)
@@ -146,7 +155,7 @@ class Job:
                 dest_endpoint=dd['dest_endpoint'],
                 log=dd['log']
                 )
-
+        j.notified = dd['notified']
         for f in dd['filedata']:
             fo = FileData.fromDict(f)
             j.files.append(fo)
@@ -160,7 +169,7 @@ class Job:
 
 def getID(dv_apiKey):
     tmp = hashlib.md5(dv_apiKey.encode('utf-8')).hexdigest()
-    return tmp + '_' + dv_apiKey[:3]
+    return tmp + '_' + dv_apiKey[-3:]
 
 # def getFilename():
 #     return 'dvxfer_'+datetime.datetime.now().strftime('%Y%m%d')+'_'+str(uuid.uuid4())

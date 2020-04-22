@@ -5,6 +5,14 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Python: Current File",
+      "type": "python",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal"
+    },
+
+    {
       "type": "chrome",
       "request": "launch",
       "name": "Launch Chrome",
@@ -29,6 +37,10 @@
     {
       "name": "Server/Client",
       "configurations": ["Python: Flask", "Launch Chrome"]
+    },
+    {
+      "name": "Flask/ChronJob",
+      "configurations": ["Python: Flask", "Python: Current File"]
     }
   ]
 }

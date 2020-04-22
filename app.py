@@ -134,7 +134,13 @@ def globus_login():
     # and can start the process of exchanging an auth code for a token.
     else:
         code = request.args.get('code')
-        tokens = client.oauth2_exchange_code_for_tokens(code)
+        try:
+            tokens = client.oauth2_exchange_code_for_tokens(code)
+        except globus_sdk.exc.AuthAPIError as aapie:
+            # Seems to be a transient error with Globus. Resolve
+            # by reloading a few times.
+            print('fwe2 Transient Globus Error: '+str(aapie)+'. Retrying...')
+            return redirect(url_for('globus_login'))
 
         # store the resulting tokens in the session
         session.update(
@@ -301,134 +307,135 @@ def uploadPOST():
         fd.tags = tags2
         fd.selected_globus_path = request.form['src_endpoint_path']+fd.path
         fd.selected_globus_path = fd.selected_globus_path.replace('//', '/')
-        job.todisk(app.config['PENDING_PATH'])
+    job.todisk(app.config['PENDING_PATH'])
 
-        # # #See if can find path relative to Globus
-        # # file_data = job.files[0]
-        # # file_name_to_find = file_data.path
-        # # relative_root = ''
-        # # if file_data.path[0] == '/':
-        # #     relativeRoot = ''
-        # #     file_name_to_find = file_data.path[1:]
+    # # #See if can find path relative to Globus
+    # # file_data = job.files[0]
+    # # file_name_to_find = file_data.path
+    # # relative_root = ''
+    # # if file_data.path[0] == '/':
+    # #     relativeRoot = ''
+    # #     file_name_to_find = file_data.path[1:]
 
-        # # Now we need to find the globus (absolute) path of the files
-        # # Dragged 'n dropped.
-        # tc = getGlobusObj()
-        # if 'Response' in str(type(tc)):
-        #     return tc
-        # find_result = 'Not Ran'
-        # try:
-        #     # job.srcEndPoint,relativeRoot,file_name_to_find,file_data.mru,file_data.size)
-        #     find_result = globus.find_globus_path_for_files(tc, job)
-        # except Exception as e:
-        #     find_result = str(e)
-        #     if 'AuthenticationFailed' in str(e):
-        #         return redirect('/upload')
+    # # Now we need to find the globus (absolute) path of the files
+    # # Dragged 'n dropped.
+    # tc = getGlobusObj()
+    # if 'Response' in str(type(tc)):
+    #     return tc
+    # find_result = 'Not Ran'
+    # try:
+    #     # job.srcEndPoint,relativeRoot,file_name_to_find,file_data.mru,file_data.size)
+    #     find_result = globus.find_globus_path_for_files(tc, job)
+    # except Exception as e:
+    #     find_result = str(e)
+    #     if 'AuthenticationFailed' in str(e):
+    #         return redirect('/upload')
 
-        # if 'Response' in str(type(find_result)):
-        #     return find_result
-        # elif 'logged in' in str(find_result):
-        #     return redirect('/upload')
+    # if 'Response' in str(type(find_result)):
+    #     return find_result
+    # elif 'logged in' in str(find_result):
+    #     return redirect('/upload')
 
-        # # Ideally, we get touple(list_of_matching_globus_paths,list_of_matching_globus_paths_1hour_off)
-        # if len(find_result[0]) > 1:
-        #     app.msgs_for_client[session['session_id']] = idx/cnt
+    # # Ideally, we get touple(list_of_matching_globus_paths,list_of_matching_globus_paths_1hour_off)
+    # if len(find_result[0]) > 1:
+    #     app.msgs_for_client[session['session_id']] = idx/cnt
 
-        # OK, we should have a globus path attached to our files.
-        # Set's setup the transfer.
-        job.dest_endpoint = globus.setupXfer(app.config['SENSITIVE_INFO'], job.globus_usr_name,
-                                             job.globus_id, app.config['DATAVERSE_GLOBUS_ENDPOINT_ID'], job.job_id)
+    # OK, we should have a globus path attached to our files.
+    # Set's setup the transfer.
+    job.dest_endpoint = globus.setupXfer(app.config['SENSITIVE_INFO'], job.globus_usr_name,
+                                         job.globus_id, app.config['DATAVERSE_GLOBUS_ENDPOINT_ID'], job.job_id)
 
-        # fd:xferjob.FileData
-        # for fd in jobs.files:
-        #     fd.selected_globus_path =
+    # fd:xferjob.FileData
+    # for fd in jobs.files:
+    #     fd.selected_globus_path =
 
-        job.todisk(app.config['PENDING_PATH'])
+    job.todisk(app.config['PENDING_PATH'])
 
-        # Let's kickoff the transfer.
-        tc = getGlobusObj()
-        if 'Response' in str(type(tc)):
-            return tc
-        try:
-            task_id = globus.transferjob(
-                tc, job, job.dest_endpoint)
-            job.globus_task_id = task_id
-        except Exception as e:
-            find_result = str(e)
-            if 'AuthenticationFailed' in str(e):
-                return redirect('/upload')
-
-        if 'TransferResponse' in str(type(task_id)):
-            if task_id['code'] == 'Accepted':
-                job.globus_task_id = task_id['task_id']
-            else:
-                return "Could not successfully submit task: "+str(task_id)
-        elif 'Response' in str(type(task_id)):
-            return task_id
-        elif 'logged in' in str(task_id):
+    # Let's kickoff the transfer.
+    tc = getGlobusObj()
+    if 'Response' in str(type(tc)):
+        return tc
+    try:
+        task_id = globus.transferjob(
+            tc, job, job.dest_endpoint)
+        job.globus_task_id = task_id
+    except Exception as e:
+        find_result = str(e)
+        if 'AuthenticationFailed' in str(e):
             return redirect('/upload')
 
-        # Let's re-save the job to capture the task_id
-        job.todisk(app.config['PENDING_PATH'])
-        # dirpath = Path(app.config['PENDING_PATH'])
-        # dirpath.mkdir(parents=True,exist_ok=True)
-        # mdpath = dirpath  / (job.job_id+'.json')
-        # f = open(mdpath,'w')
-        # f.write(mdcontent)
-        # f.close()
+    if 'TransferResponse' in str(type(task_id)):
+        if task_id['code'] == 'Accepted':
+            job.globus_task_id = task_id['task_id']
+        else:
+            return "Could not successfully submit task: "+str(task_id)
+    elif 'Response' in str(type(task_id)):
+        return task_id
+    elif 'logged in' in str(task_id):
+        return redirect('/upload')
 
-        if app.config['UPLOAD_VIA_DV']:
-            rootPath = Path('c:/temp/dvdata')
-            server = app.config['BASE_DV_URL']
-            api_key = session[usr.settings.DV_KEY]
-            idx = 0
-            cnt = len(job.files)
-            for fd in job.files:
-                if fd.path[0] == '/':
-                    fd.path = fd.path[1:]
-                    filePath = rootPath / fd.path
-                    upload.onefile(
-                        server, api_key, job.dataset_id, filePath, fd.desc, fd.tags)
-                    idx += 1
-                    # session['percent_done'] = idx/cnt
-                    # session.modified = True
-                    # session['data']['percent_done'] = idx/cnt
-                    # red.publish('percent_done',str(idx/cnt))
-                    app.msgs_for_client[session['session_id']] = idx/cnt
-                    print('SYSTEM SAYS: ' +
-                          str(app.msgs_for_client[session['session_id']]))
+    # Let's re-save the job to capture the task_id
+    job.todisk(app.config['PENDING_PATH'])
+    # dirpath = Path(app.config['PENDING_PATH'])
+    # dirpath.mkdir(parents=True,exist_ok=True)
+    # mdpath = dirpath  / (job.job_id+'.json')
+    # f = open(mdpath,'w')
+    # f.write(mdcontent)
+    # f.close()
 
-            # upload.files(app.config['BASE_DV_URL'],session[usr.settings.DV_KEY],job,Path('c:/temp/dvdata'))
-            print("Upload finished!")
+    if app.config['UPLOAD_VIA_DV']:
+        rootPath = Path('c:/temp/dvdata')
+        server = app.config['BASE_DV_URL']
+        api_key = session[usr.settings.DV_KEY]
+        idx = 0
+        cnt = len(job.files)
+        for fd in job.files:
+            if fd.path[0] == '/':
+                fd.path = fd.path[1:]
+                filePath = rootPath / fd.path
+                upload.onefile(
+                    server, api_key, job.dataset_id, filePath, fd.desc, fd.tags)
+                idx += 1
+                # session['percent_done'] = idx/cnt
+                # session.modified = True
+                # session['data']['percent_done'] = idx/cnt
+                # red.publish('percent_done',str(idx/cnt))
+                app.msgs_for_client[session['session_id']] = idx/cnt
+                print('SYSTEM SAYS: ' +
+                      str(app.msgs_for_client[session['session_id']]))
+
+        # upload.files(app.config['BASE_DV_URL'],session[usr.settings.DV_KEY],job,Path('c:/temp/dvdata'))
+        print("Upload finished!")
     return redirect('/upload')
 
 # TODO: Also limit by Dataverse IP address(es)?
 @app.route("/pending")
 def pending():
-    if not 'key' in request.args:
-        return('')
     if not 'jid' in request.args:
         return('')
 
-    strtomatch = app.config['PENDING_KEY'] + \
-        datetime.datetime.now().strftime('%Y%m%d%H%M')
-    hash = hashlib.sha256(str.encode(strtomatch)).hexdigest()
-    print(hash)
-    if request.args.get('key') != hash:
-        print(request.args.get('key')+' != '+hash)
-        return('')
+    if not 'INITIALIZED' in app.config:
+        load_app_client()
 
-    jobid = request.args.get('jid')
-    dirpath = Path(app.config['PENDING_PATH'])
-    mdpath = dirpath / (jobid+'.json')
-    data = ''
-    with open(mdpath, 'r') as f:
-        data = f.read()
-    return(data)
+    if str(request.remote_addr) in app.config['IP_WHITE_LIST']:
+        if 'jid' in request.args:
+            jobid = request.args.get('jid')
+            dirpath = Path(app.config['PENDING_PATH'])
+            mdpath = dirpath / (jobid+'.json')
+            data = ''
+            if not os.path.isfile(mdpath):
+                return(data)
+            with open(mdpath, 'r') as f:
+                data = f.read()
+            return(data)
 
-# @app.route("/sharetest")
-# def shareTest():
 
+@app.route("/test")
+def test():
+    res = globus.svr_transfer_status(
+        app.config['SENSITIVE_INFO'], '5929f75a-7dd5-11ea-96df-0afc9e7dd773')
+    print(str(res))
+    return(str(res))
 
 #     dvEP = app.config['DATAVERSE_GLOBUS_ENDPOINT_ID']
 
@@ -653,4 +660,6 @@ def load_app_client():
     with open(app.config['SENSITIVE_INFO'], 'r') as fr:
         vals = json.loads(fr.read())
     app.config['PENDING_KEY'] = vals['PENDING_KEY']
+    app.config['IP_WHITE_LIST'] = vals['IP_WHITE_LIST']
+    app.config['INITIALIZED'] = True
     return globus_sdk.ConfidentialAppAuthClient(vals['GLOBUS_WEB_APP_CLIENT_ID'], vals['GLOBUS_WEB_APP_CLIENT_SECRET'])

@@ -163,7 +163,7 @@ def does_share_exist(tc: globus_sdk.TransferClient, globus_usr: str):
 
 
 def setupXfer(credspath: str, globus_usr: str, globus_usr_id: str, dv_endpoint_id: str, dirName: str):
-
+    log = []
     fr = open(credspath, 'r')
     vals = json.loads(fr.read())
     synapseUser = vals['DATAVERSE_GLOBUS_LOCAL_USER']
@@ -174,7 +174,7 @@ def setupXfer(credspath: str, globus_usr: str, globus_usr_id: str, dv_endpoint_i
 
     tc = getNativeTransferClient(native_client_id, refresh_token)
     activateEndpoint(tc, dv_endpoint_id, synapseUser, synapsePass)
-    createDir(tc, dv_endpoint_id, dirName)
+    log.append(str(createDir(tc, dv_endpoint_id, dirName)))
     newShareResult = new_share(tc, dv_endpoint_id, globus_usr, dirName)
     shareEID = newShareResult['id']
     grant_permission(tc, shareEID, globus_usr_id, dirName)
@@ -182,10 +182,16 @@ def setupXfer(credspath: str, globus_usr: str, globus_usr_id: str, dv_endpoint_i
 
 
 def createDir(tc: globus_sdk.TransferClient, dv_endpoint_id: str, dirName: str):
-    tr = tc.operation_mkdir(dv_endpoint_id, '/~/'+dirName)
-    print('Create Dir Result:')
-    print(str(tr))
-    return tr
+    result:str = 'Create directory not yet ran.'
+    try:
+        tr = tc.operation_mkdir(dv_endpoint_id, '/~/'+dirName)
+        print(str(tr))
+        return tr
+    except globus_sdk.TransferAPIError as apaie:
+        if "Path already exists" in str(apaie):
+            return "Globus Create Dir: Path already exists. Skipping."
+        else:
+            raise apaie
 
 
 def new_share(tc: globus_sdk.TransferClient, dv_endpoint_id: str, globus_usr: str, dirName: str):
@@ -426,7 +432,7 @@ def transfer(tc: globus_sdk.TransferClient, srcEP, destEP, srcPathDir, destPathD
     return tresult
 
 
-def transferjob(tc: globus_sdk, job: xferjob.Job, destEP: str):
+def transferjob(tc: globus_sdk.TransferClient, job: xferjob.Job, destEP: str):
     tdata = globus_sdk.TransferData(
         tc, job.srcEndPoint, destEP, label='Synapse generated, from Dataverse', sync_level='mtime', preserve_timestamp=True)
     f: xferjob.FileData
@@ -435,6 +441,43 @@ def transferjob(tc: globus_sdk, job: xferjob.Job, destEP: str):
         tdata.add_item(f.selected_globus_path, dest_path)
     tresult = tc.submit_transfer(tdata)
     print(str(tresult))
-    job.log("Transfer Job "+tresult['code']+": "+tresult['message']+" Submission ID="+tresult['submission_id']+", requestID="+tresult['request_id'])
+    job.log("Transfer Job "+tresult['code']+": "+tresult['message'] +
+            " Submission ID="+tresult['submission_id']+", requestID="+tresult['request_id'])
     # job.globus_task_id = tresult['task_id']
     return tresult
+
+
+def svr_transfer_status(credspath: str, task_id: str):
+    fr = open(credspath, 'r')
+    vals = json.loads(fr.read())
+    synapseUser = vals['DATAVERSE_GLOBUS_LOCAL_USER']
+    synapsePass = vals['DATAVERSE_GLOBUS_LOCAL_PASSWORD']
+    native_client_id = vals['GLOBUS_NATIVE_APP_CLIENT_ID']
+    refresh_token = vals['GLOBUS_NATIVE_APP_REFRESH_TOKEN']
+    fr.close()
+
+    tc = getNativeTransferClient(native_client_id, refresh_token)
+
+    res = tc.endpoint_manager_get_task(task_id)
+    # https://docs.globus.org/api/transfer/task/#task_document
+
+    msg: str = ''
+    if res.data['status'] == 'FAILED':
+        msg = 'The task or one of its subtasks failed, expired, or was canceled.'
+    elif res.data['status'] == 'INACTIVE':
+        msg = 'Task is suspended and will not continue. Likely Credential Expiration.'
+    elif res.data['status'] == 'SUCCEEDED':
+        msg = 'SUCCEEDED'
+    elif res.data['status'] == 'ACTIVE':
+        msg = 'ACTIVE'
+    else:
+        msg = 'UNKNOWN STATUS'
+    endresult = {'status': res.data['status'], 'data': res.data, 'msg': msg}
+    return endresult
+
+
+def usr_transfer_status(tc: globus_sdk.TransferClient, task_id: str):
+    asdf: globus_sdk.TransferClient = None
+    # https://docs.globus.org/api/transfer/task/#task_document
+    response = asdf.get_task(task_id)
+    response['status']
