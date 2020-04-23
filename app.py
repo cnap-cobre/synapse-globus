@@ -17,6 +17,7 @@ import zipfile
 import time
 import uuid
 import hashlib
+import jsonpickle
 # import redis
 
 
@@ -259,7 +260,7 @@ def uploadPOST():
         session['session_id'] = str(uuid.uuid4())
         # Since the session variable only gets updated per full page refresh (via cookies)
         # We need an update mechanism that updates more frequently for our server side updates
-        # During upload. So we store our ID via the app.mss_for_client variable.
+        # During upload. So we store our ID via the app.msgs_for_client variable.
         app.msgs_for_client[session['session_id']] = 0
 
     # session[usr.settings.DV_KEY] = request.form['dvkey']
@@ -582,6 +583,12 @@ def stream():
             yield 'data: {}\n\n'.format(get_message(blah))
     return Response(stream_with_context(eventStream()), mimetype="text/event-stream")
 
+
+@app.route('/updateFromDV', methods=['POST'])
+def update_from_dv():
+    if str(request.remote_addr) in app.config['IP_WHITE_LIST']:
+        job_update: usr.JobHistory = jsonpickle.decode(request.form['JOB'])
+        
 
 @app.route('/link', methods=['POST'])
 def link():

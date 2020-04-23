@@ -121,6 +121,9 @@ class Job:
     msglog: List[str] = []
     notified: bool = False
     total_import_time: datetime.timedelta = datetime.timedelta(-1)
+    job_status:str = ''
+    last_updated:str = ''
+    percent_done:int = 0
 
     def __init__(self, dataverse_user_id, globus_user_id, dataverse_dataset_id, job_id, globus_usr_name: str, srcEndPoint: str, globus_task_id: str = '', job_size_bytes: int = 0, dest_endpoint: str = '', log: List[str] = []):
         self.dv_user_id = dataverse_user_id
