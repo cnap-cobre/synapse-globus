@@ -1,5 +1,5 @@
 from flask import Flask, url_for, session, redirect, request, render_template, Response, stream_with_context
-from datetime import datetime
+import datetime
 import re
 import os
 import globus_sdk
@@ -18,6 +18,8 @@ import time
 import uuid
 import hashlib
 import jsonpickle
+from typing import Dict
+import synapse_session
 # import redis
 
 
@@ -25,7 +27,9 @@ class CustomFlask(Flask):
 
     def __init__(self, *args, **kwargs):
         super(CustomFlask, self).__init__(*args, **kwargs)
-        self.msgs_for_client = {}
+
+        # Dict[session_id,synapse_session.obj]
+        self.sessions_by_session_id: Dict[str, synapse_session.obj] = {}
 
     jinja_options = Flask.jinja_options.copy()
     jinja_options.update(dict(
@@ -35,12 +39,12 @@ class CustomFlask(Flask):
     ))
 
 
-# app = Flask(__name__)
 app = CustomFlask(__name__)
 app._static_folder = 'static'
 app._static_url_path = ''
 app.config.from_pyfile('app.conf')
-# red = redis.StrictRedis()
+
+INITIALIZED = 'INITIALIZED'
 
 # Run the app if called via script
 if __name__ == '__main__':
@@ -56,17 +60,57 @@ def getGlobusObj():
     return transfer_client
 
 
+def get_session() -> synapse_session.obj:
+
+    if not INITIALIZED in app.config:
+        # Check if turning authentication to false
+        # Will auto-login...
+        session['is_authenticated'] = False
+        load_app_client()
+
+    session_id = str(uuid.uuid4())
+    if 'session_id' in session:
+        session_id = session['session_id']
+
+    # First let's house clean any old sessions.
+    s: synapse_session.obj
+    for s in list(app.sessions_by_session_id.values()):
+        diff: datetime.timedelta = datetime.datetime.now() - s.last_used
+        if diff.days > 1 and s.session_id != session_id:
+            print("Removing session obj "+s.session_id+"," +
+                  s.globus_id+" because it's "+str(diff)+" old.")
+            del app.sessions_by_session_id[session_id]
+
+    session['session_id'] = session_id
+    if session_id in app.sessions_by_session_id:
+        s = app.sessions_by_session_id[session_id]
+        if len(s.globus_id) < 4 and 'globus_id' in session:
+            s.set_globus_id(session['globus_id'])
+        s.last_used = datetime.datetime.now()
+        return s
+
+    s = synapse_session.obj(session_id, app.config['USER_SETTINGS_PATH'])
+    app.sessions_by_session_id[s.session_id] = s
+    return s
+
+
 def globusDo(func, tc: globus_sdk.TransferClient, **kwargs):
     if tc is None:
         tc = getGlobusObj()
     try:
-        if (usr.settings.GLOBUS_ID not in session) or (len(session[usr.settings.GLOBUS_ID]) < 5):
+        sess: synapse_session.obj = get_session()
+        if (sess.globus_id == '') or (len(sess.globus_id) < 5):
             auth2 = globus_sdk.AccessTokenAuthorizer(
                 session['tokens']['auth.globus.org']['access_token'])
             client = globus_sdk.AuthClient(authorizer=auth2)
             info = client.oauth2_userinfo()
-            session[usr.settings.GLOBUS_ID] = info['sub']
-            session[usr.settings.GLOBUS_USER] = info['preferred_username']
+            session['globus_id'] = info['sub']
+            sess.set_globus_id(info['sub'])
+            sess.settings.globus_usr = info['preferred_username']
+            sess.save_settings()
+            # session[usr.settings.GLOBUS_ID] = info['sub']
+            # session[usr.settings.GLOBUS_USER] = info['preferred_username']
+
             print(info.data)
         return func(tc, kwargs)
         # globus.available_endpoints(transfer_client)
@@ -74,6 +118,9 @@ def globusDo(func, tc: globus_sdk.TransferClient, **kwargs):
         if 'Token is not active' in str(e):
             return redirect(url_for('globus_login'))
         return "There was an error getting available Globus end points: "+str(e)
+    except globus_sdk.exc.AuthAPIError as authapie:
+        if 'FORBIDDEN' in str(authapie):
+            return redirect(url_for('logout'))
 
     # print('Effective Identity "{}" has Full Name "{}" and Email "{}"'
     #     .format(info["sub"], info["name"], info["email"]))
@@ -170,6 +217,8 @@ def logout():
         client.oauth2_revoke_token(token)
 
     # Destroy the session state
+    get_session().save_settings()
+
     session.clear()
 
     # the return redirection location to give to Globus AUth
@@ -190,10 +239,10 @@ def logout():
 @app.route("/upload")
 def uploadGET():
     # session['data'] = {'percent_done':0}
-
-    if 'session_id' not in session:
-        session['session_id'] = str(uuid.uuid4())
-        app.msgs_for_client[session['session_id']] = 0
+    sess: synapse_session.obj = get_session()
+    # if 'session_id' not in session:
+    #     session['session_id'] = str(uuid.uuid4())
+    #     app.msgs_for_client[session['session_id']] = 0
 
     # Get a list of available globus endpoints.
     tc = getGlobusObj()
@@ -207,79 +256,75 @@ def uploadGET():
     # tmp = [{'a':'AAA','b':'BBB'},{'a':'aaa','b':'bbb'},{'a':'EEE','f':'fff'}]
 
     # load MRU settings if existant.
-    usr.load(Path(app.config['USER_SETTINGS_PATH']), session)
+    sess.load_settings()
 
-    dvkey = ''
-    if len(session[usr.settings.DV_KEY]) < 4:
-        return redirect('/setdvkey?msg=Please_enter_a_valid_Dataverse_key')
-    dvkey = session[usr.settings.DV_KEY]
-    dvkey_masked = "*" + session[usr.settings.DV_KEY][-4:]
-    session[usr.settings.DV_KEY_MASKED] = "*" + \
-        session[usr.settings.DV_KEY][-4:]
+    if (len(sess.settings.dv_key)) < 4:
+        return redirect("/setdvkey")
 
     md = metadata.Metadata()
     labs = md.get_extractors()
     datasets = []
     try:
-        datasets = dataset.getList(app.config['BASE_DV_URL'], dvkey)
+        datasets = dataset.getList(
+            app.config['BASE_DV_URL'], sess.settings.dv_key)
     except dataset.AuthError as _ae:
         return redirect('/setdvkey?msg=Invalid_key')
     datasets.insert(0, {'name': 'New Dataset...', 'entity_id': '0'})
 
-    return render_template('upload.html', endpoints=endpoints, mruEndpointID=session[usr.settings.SRC_ENDPOINT], labs=labs, mruLab=session[usr.settings.LAB_ID], guser=session[usr.settings.GLOBUS_USER], dvkey=dvkey_masked, datasets=datasets, mruDataset=session[usr.settings.DATASET_ID])
+    return render_template('upload.html',
+                           endpoints=endpoints,
+                           mruEndpointID=sess.settings.src_endpoint,
+                           labs=labs,
+                           mruLab=sess.settings.lab_id,
+                           guser=sess.settings.globus_usr,
+                           dvkey=sess.settings.dv_key_masked,
+                           datasets=datasets,
+                           mruDataset=sess.settings.dataset_id)
 
 
 @app.route('/updatedvkey', methods=['POST'])
 def updateDVKey():
-    key = request.form['dvkey']
-    if "*" + session[usr.settings.DV_KEY][-4:] != key:
-        session[usr.settings.DV_KEY] = request.form['dvkey']
-        usr.updateDisk(Path(app.config['USER_SETTINGS_PATH']), session)
+    sess: synapse_session.obj = get_session()
+    sess.settings.dv_key = request.form['dvkey']
+    sess.save_settings()
     return redirect('/upload',)
+
+
+# def load_usr_settings() -> usr.settings2:
+#     return usr.settings2.load(app.config['USER_SETTINGS_PATH'], session['GLOBUS_ID'])
+
+
+# def save_usr_settings(us: usr.settings2):
+#     us.save(app.config['USER_SETTINGS_PATH'])
 
 
 @app.route('/setdvkey')
 def setDVKey():
     msg = ''
     if 'msg' in request.args:
-        msg = request.args.get('msg')
-    dvkey = ''
-    if len(session[usr.settings.DV_KEY]) > 4:
-        dvkey = "*" + session[usr.settings.DV_KEY][-4:]
-    return render_template('setdvkey.html', guser=session[usr.settings.GLOBUS_USER], dvkey=dvkey, status_msg=msg)
+        msg = str(request.args.get('msg')).replace("_", " ")
+    us: usr.settings2 = get_session().settings
+    return render_template('setdvkey.html', guser=us.globus_usr, dvkey=us.dv_key_masked, status_msg=msg)
 
 
 @app.route("/upload", methods=['POST'])
 def uploadPOST():
-    # files_to_upload = []
+    sess: synapse_session.obj = get_session()
 
     session['percent_done'] = 1
     session['data'] = {'percent_done': 0}
-
-    if 'session_id' not in session:
-        session['session_id'] = str(uuid.uuid4())
-        # Since the session variable only gets updated per full page refresh (via cookies)
-        # We need an update mechanism that updates more frequently for our server side updates
-        # During upload. So we store our ID via the app.msgs_for_client variable.
-        app.msgs_for_client[session['session_id']] = 0
-
-    # session[usr.settings.DV_KEY] = request.form['dvkey']
-    # session[usr.settings.GLOBUS_USER] = session['guser']
-
-    srcEP = request.form['selected_endpoint']
-
-    session[usr.settings.SRC_ENDPOINT] = srcEP
-    session[usr.settings.LAB_ID] = request.form['lab_type']
-    session[usr.settings.DATASET_ID] = request.form['dataset_id']
+    sess.settings.src_endpoint = request.form['selected_endpoint']
+    sess.settings.lab_id = request.form['lab_type']
+    sess.settings.dataset_id = request.form['dataset_id']
 
     # save MRU settings
-    usr.updateDisk(Path(app.config['USER_SETTINGS_PATH']), session)
+    sess.save_settings()
 
     # 4/8/2020: Pull up our manifest file we started populating after the drag'n'drop
     # event in order to map the relative browser path of the files with the Globus
     # abs path.
     job = xferjob.Job.fromdisk(session['job_id'], app.config['PENDING_PATH'])
-
+    job.dataset_id = sess.settings.dataset_id
     desc = request.form['description']
     tags = request.form['tags'].split(',')
     tags = [item.strip() for item in tags]
@@ -287,7 +332,7 @@ def uploadPOST():
     # Handle metadata
     md = metadata.Metadata()
     extractors = md.get_extractors()
-    metadata_extractor = extractors[int(session[usr.settings.LAB_ID])]
+    metadata_extractor = extractors[int(sess.settings.lab_id)]
     # qs = metadata_extractor.get_init_questions()
     # answers = {}
     # for question in qs:
@@ -306,49 +351,25 @@ def uploadPOST():
                 filedesc += em + " "+(str(extra_metadata[em]))+", "
         fd.desc = filedesc.strip()
         fd.tags = tags2
-        fd.selected_globus_path = request.form['src_endpoint_path']+fd.path
+
+        # Ensure the path is correct.
+        rp: str = request.form['src_endpoint_path']
+
+        print("****************")
+        print('selected path: '+rp)
+        print('relative path: '+fd.path)
+        print("****************")
+
+        # rp = rp[:rp.rfind("/", 0, -1)]
+
+        fd.selected_globus_path = rp+fd.path
         fd.selected_globus_path = fd.selected_globus_path.replace('//', '/')
     job.todisk(app.config['PENDING_PATH'])
-
-    # # #See if can find path relative to Globus
-    # # file_data = job.files[0]
-    # # file_name_to_find = file_data.path
-    # # relative_root = ''
-    # # if file_data.path[0] == '/':
-    # #     relativeRoot = ''
-    # #     file_name_to_find = file_data.path[1:]
-
-    # # Now we need to find the globus (absolute) path of the files
-    # # Dragged 'n dropped.
-    # tc = getGlobusObj()
-    # if 'Response' in str(type(tc)):
-    #     return tc
-    # find_result = 'Not Ran'
-    # try:
-    #     # job.srcEndPoint,relativeRoot,file_name_to_find,file_data.mru,file_data.size)
-    #     find_result = globus.find_globus_path_for_files(tc, job)
-    # except Exception as e:
-    #     find_result = str(e)
-    #     if 'AuthenticationFailed' in str(e):
-    #         return redirect('/upload')
-
-    # if 'Response' in str(type(find_result)):
-    #     return find_result
-    # elif 'logged in' in str(find_result):
-    #     return redirect('/upload')
-
-    # # Ideally, we get touple(list_of_matching_globus_paths,list_of_matching_globus_paths_1hour_off)
-    # if len(find_result[0]) > 1:
-    #     app.msgs_for_client[session['session_id']] = idx/cnt
 
     # OK, we should have a globus path attached to our files.
     # Set's setup the transfer.
     job.dest_endpoint = globus.setupXfer(app.config['SENSITIVE_INFO'], job.globus_usr_name,
                                          job.globus_id, app.config['DATAVERSE_GLOBUS_ENDPOINT_ID'], job.job_id)
-
-    # fd:xferjob.FileData
-    # for fd in jobs.files:
-    #     fd.selected_globus_path =
 
     job.todisk(app.config['PENDING_PATH'])
 
@@ -384,29 +405,29 @@ def uploadPOST():
     # f.write(mdcontent)
     # f.close()
 
-    if app.config['UPLOAD_VIA_DV']:
-        rootPath = Path('c:/temp/dvdata')
-        server = app.config['BASE_DV_URL']
-        api_key = session[usr.settings.DV_KEY]
-        idx = 0
-        cnt = len(job.files)
-        for fd in job.files:
-            if fd.path[0] == '/':
-                fd.path = fd.path[1:]
-                filePath = rootPath / fd.path
-                upload.onefile(
-                    server, api_key, job.dataset_id, filePath, fd.desc, fd.tags)
-                idx += 1
-                # session['percent_done'] = idx/cnt
-                # session.modified = True
-                # session['data']['percent_done'] = idx/cnt
-                # red.publish('percent_done',str(idx/cnt))
-                app.msgs_for_client[session['session_id']] = idx/cnt
-                print('SYSTEM SAYS: ' +
-                      str(app.msgs_for_client[session['session_id']]))
+    # if app.config['UPLOAD_VIA_DV']:
+    #     rootPath = Path('c:/temp/dvdata')
+    #     server = app.config['BASE_DV_URL']
+    #     api_key = session[usr.settings.DV_KEY]
+    #     idx = 0
+    #     cnt = len(job.files)
+    #     for fd in job.files:
+    #         if fd.path[0] == '/':
+    #             fd.path = fd.path[1:]
+    #             filePath = rootPath / fd.path
+    #             upload.onefile(
+    #                 server, api_key, job.dataset_id, filePath, fd.desc, fd.tags)
+    #             idx += 1
+    #             # session['percent_done'] = idx/cnt
+    #             # session.modified = True
+    #             # session['data']['percent_done'] = idx/cnt
+    #             # red.publish('percent_done',str(idx/cnt))
+    #             app.msgs_for_client[session['session_id']] = idx/cnt
+    #             print('SYSTEM SAYS: ' +
+    #                   str(app.msgs_for_client[session['session_id']]))
 
-        # upload.files(app.config['BASE_DV_URL'],session[usr.settings.DV_KEY],job,Path('c:/temp/dvdata'))
-        print("Upload finished!")
+    #     # upload.files(app.config['BASE_DV_URL'],session[usr.settings.DV_KEY],job,Path('c:/temp/dvdata'))
+    #     print("Upload finished!")
     return redirect('/upload')
 
 # TODO: Also limit by Dataverse IP address(es)?
@@ -486,10 +507,11 @@ def test():
 
 @app.route("/tobeocat")
 def toBeocat():
+
     if 'fileId' in request.args:
-        session[usr.settings.DV_FILE_ID] = request.args['fileId']
+        session['TO_BEOCAT_DV_FILE_ID'] = request.args['fileId']
     elif 'dataSetId' in request.args:
-        session[usr.settings.DV_DATASET_ID] = int(request.args['dataSetId'])
+        session['TO_BEOCAT_DV_DATASET_ID'] = int(request.args['dataSetId'])
 
     destEndpoint = app.config['BEOCAT_GLOBUS_ENDPOINT_ID']
 
@@ -502,24 +524,22 @@ def toBeocat():
         return endpoints
     elif 'logged in' in str(endpoints):
         return redirect('/tobeocat')
-    # tmp = [{'a':'AAA','b':'BBB'},{'a':'aaa','b':'bbb'},{'a':'EEE','f':'fff'}]
 
     if endpoints[destEndpoint]['activated'] == False:
         # Endpoint isn't activated. Re-direct.
         return redirect('https://app.globus.org/file-manager?destination_id='+destEndpoint+'&origin_id='+app.config['MUSTER_GLOBUS_ENDPOINT_ID']+'&origin_path=%2F~%2F'+destEndpoint)
-    # load MRU settings if existant.
-    usr.load(Path(app.config['USER_SETTINGS_PATH']), session)
+    # Now that we have a valid Globus ID, let's load MRU settings if existant.
+    us: usr.settings2 = get_session().settings
 
     # OK, now let's pull the data via the dataverse API, and put it on Globus.
     files = []
-    files.append(session[usr.settings.DV_FILE_ID])
+    files.append(session['TO_BEOCAT_DV_FILE_ID'])
     zipPath = Path(app.config['PENDING_PATH']) / 'PENDING.zip'
 
     msg = 'Not yet ran.'
 
     try:
-        download.files(app.config['BASE_DV_URL'],
-                       session[usr.settings.DV_KEY], files, zipPath)
+        download.files(app.config['BASE_DV_URL'], us.dv_key, files, zipPath)
         with zipfile.ZipFile(zipPath, 'r') as zip_ref:
             zip_ref.extractall(Path(app.config['PENDING_PATH']))
         os.remove(zipPath)
@@ -572,15 +592,10 @@ def get_message(msg):
 def stream():
     def eventStream():
         while True:
-            blah = 0
-            # print('In stream.')
-            if 'session_id' in session:
-                if session['session_id'] in app.msgs_for_client:
-                    blah = app.msgs_for_client[session['session_id']]
-            # print('Val '+str(blah))
-            # sessvar = session['percent_done']
+            sess: synapse_session.obj = get_session()
+            msg = sess.msg_for_client
             # wait for source data to be available, then push it
-            yield 'data: {}\n\n'.format(get_message(blah))
+            yield 'data: {}\n\n'.format(get_message(msg))
     return Response(stream_with_context(eventStream()), mimetype="text/event-stream")
 
 
@@ -588,28 +603,40 @@ def stream():
 def update_from_dv():
     if str(request.remote_addr) in app.config['IP_WHITE_LIST']:
         job_update: usr.JobHistory = jsonpickle.decode(request.form['JOB'])
-        
+        us: usr.settings2 = usr.settings2.load(
+            app.config['USER_SETTINGS_PATH'], job_update.globus_id)
+        us.job_history[job_update.job_id] = job_update
+        us.save(app.config['USER_SETTINGS_PATH'])
+
+        # See if we have an active session that matches our globus_id
+        s: synapse_session.obj
+        for s in self.sessions_by_session_id.values():
+            if s.__globus_id == job_update.globus_id:
+                s.msgs_for_client = request.form['JOB']
+
 
 @app.route('/link', methods=['POST'])
 def link():
 
-    if 'session_id' not in session:
-        session['session_id'] = str(uuid.uuid4())
-        # Since the session variable only gets updated per full page refresh (via cookies)
-        # We need an update mechanism that updates more frequently for our server side updates
-        # During upload. So we store our ID via the app.mss_for_client variable.
-        app.msgs_for_client[session['session_id']] = 0
+    sess: synapse_session.obj = get_session()
+    us: usr.settings2 = sess.load_settings()
+    # if 'session_id' not in session:
+    #     session['session_id'] = str(uuid.uuid4())
+    #     # Since the session variable only gets updated per full page refresh (via cookies)
+    #     # We need an update mechanism that updates more frequently for our server side updates
+    #     # During upload. So we store our ID via the app.mss_for_client variable.
+    #     app.msgs_for_client[session['session_id']] = 0
 
-    srcEP = request.form['selected_endpoint']
-    session[usr.settings.SRC_ENDPOINT] = srcEP
+    us.src_endpoint = request.form['selected_endpoint']
+    sess.save_settings()
 
     file_data = json.loads(request.form['file_list'])
-    job = xferjob.Job(dataverse_user_id=xferjob.getID(session[usr.settings.DV_KEY]),
-                      globus_user_id=session[usr.settings.GLOBUS_ID],
-                      dataverse_dataset_id=session[usr.settings.DATASET_ID],
+    job = xferjob.Job(dataverse_user_id=xferjob.getID(us.dv_key),
+                      globus_user_id=us.globus_id,
+                      dataverse_dataset_id=us.dataset_id,
                       job_id=str(uuid.uuid4()),
-                      globus_usr_name=session[usr.settings.GLOBUS_USER],
-                      srcEndPoint=srcEP)
+                      globus_usr_name=us.globus_usr,
+                      srcEndPoint=us.src_endpoint)
 
     session['job_id'] = job.job_id
     max_size = 0
@@ -619,7 +646,7 @@ def link():
         mru = fe['mru']
         sz = fe['size']
         max_size += sz
-        fd = xferjob.FileData(path, sz, mru, '', [])
+        fd = xferjob.FileData(path, sz, mru)
         job.files.append(fd)
     print("Max Size: "+str(max_size))
     job.job_size_bytes = max_size
@@ -668,5 +695,5 @@ def load_app_client():
         vals = json.loads(fr.read())
     app.config['PENDING_KEY'] = vals['PENDING_KEY']
     app.config['IP_WHITE_LIST'] = vals['IP_WHITE_LIST']
-    app.config['INITIALIZED'] = True
+    app.config[INITIALIZED] = True
     return globus_sdk.ConfidentialAppAuthClient(vals['GLOBUS_WEB_APP_CLIENT_ID'], vals['GLOBUS_WEB_APP_CLIENT_SECRET'])

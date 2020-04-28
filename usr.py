@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import json
 from pathlib import Path
@@ -9,6 +10,7 @@ import jsonpickle
 class JobHistory():
     # Synapse Job ID
     job_id: str = ''
+    globus_id: str = ''
     src_name: str = ''
     dest_name: str = ''
     time_started: datetime.datetime
@@ -19,17 +21,25 @@ class JobHistory():
     status_msg: str = ''
 
 
-class settings2():
-    globus_id: str
-    globus_usr: str
-    lab_id: str
-    dv_key: str
-    src_endpoint: str
-    dv_key_masked: str
-    dataset_id: str
+class Settings2():
+
+    def __init__(self, globus_id: str):
+        self.globus_id = globus_id
+        self.globus_usr: str = ''
+        self.lab_id: str = ''
+        self.dv_key: str = ''
+        self.src_endpoint: str = ''
+        self.dataset_id: str = ''
 
     # Dict[job_id]
     job_history: Dict[str, str] = {}
+
+    @property
+    def dv_key_masked(self) -> str:
+        res: str = "*" + self.dv_key[-4:]
+        if len(res) == 1:
+            return ''
+        return res
 
     def save(self, dir: str):
         dirpath = Path(dir)
@@ -40,12 +50,16 @@ class settings2():
             f.write(data)
 
     @staticmethod
-    def load(dir: str, globus_id: str) -> settings2:
-        dirpath = Path(dir)
-        mdpath = dirpath / (globus_id+'.json')
-        with open(mdpath, 'r') as f:
-            raw: str = f.read()
-        return jsonpickle.decode(raw)
+    def load(dir: str, globus_id: str) -> Settings2:
+        if not os.path.exists(dir):
+            os.mkdir(dir)
+        op = Path(dir) / (globus_id+".json")
+        if op.exists():
+            with open(op, 'r') as f:
+                raw: str = f.read()
+            return jsonpickle.decode(raw)
+        else:
+            return Settings2(globus_id)
 
 
 class settings():

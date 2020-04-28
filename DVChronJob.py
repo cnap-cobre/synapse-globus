@@ -10,10 +10,6 @@ import globus
 import db
 import json
 
-download_dir = "c:/temp/globus_xfers/xfers"
-server = ""
-active_manifest_dir = "c:/temp/globus_xfers/active_manifests"
-archived_manifest_dir = "c:/temp/globus_xfers/archived_manifests"
 creds_path = 'c:/temp/synapse_chron.creds'
 
 
@@ -36,7 +32,8 @@ def execute():
     job_dirs = next(os.walk(conf['GLOBUS_DEST_DIR']))[1]
     for d in job_dirs:
         if not d in manifests:
-            j: Job = download_manifest(server, d, conf['ACTIVE_MANIFEST_DIR'])
+            j: Job = download_manifest(
+                conf['SYNAPSE_SERVER'], d, conf['ACTIVE_MANIFEST_DIR'])
             if j != None:
                 manifests[j.job_id] = j
 
@@ -102,6 +99,15 @@ def lookup_api_key(keys: List[str], encoded_key: str) -> str:
                     "Found multiple apikeys with identical hashes + checksum!!: "+encoded_key)
             candidate = key
     return candidate
+
+
+def clean_up_xfer():
+    """  After a period of time (a week?) clean up a job.
+        - delete xfer_download data. & Directory
+        - remove globus share
+        - Move manifest to archive.
+    """
+    pass
 
 
 def download_manifest(server_uri: str, job_id: str, active_manifest_dir: str) -> xferjob.Job:

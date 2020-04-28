@@ -16,6 +16,7 @@
       "type": "chrome",
       "request": "launch",
       "name": "Launch Chrome",
+      "port": 4100,
       "url": "http://localhost:5000",
       "webRoot": "${workspaceFolder}/static"
     },

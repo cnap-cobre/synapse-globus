@@ -123,6 +123,24 @@ function uploadFilesOnly() {
       var res = JSON.parse(response);
       // alert(res);
       // alert(res.paths[0]);
+      var elSrcPath = document.getElementById("src_endpoint_path_list");
+
+      //Remove all existing options.
+      var length = elSrcPath.options.length;
+      for (i = length - 1; i >= 0; i--) {
+        elSrcPath.remove(i);
+      }
+
+      if (res.paths.length > 0) {
+        for (var i = 0; i < res.paths.length; i++) {
+          var opt = res.paths[i];
+          var el = document.createElement("option");
+          el.textContent = opt;
+          el.value = opt;
+          elSrcPath.appendChild(el);
+        }
+      }
+
       $("#lbl_finding_result").text(res.paths[0]);
       $("#lbl_path_msg").text(res.msg);
       elfindingResult.style.display = "block";
@@ -146,10 +164,13 @@ function uploadFiles() {
   formData.append("dataset_id", document.getElementById("dataset_id").value);
   formData.append("description", document.getElementById("description").value);
   formData.append("tags", document.getElementById("tags").value);
-  formData.append(
-    "src_endpoint_path",
-    document.getElementById("lbl_finding_result").textContent
-  );
+  // formData.append(
+  //   "src_endpoint_path",
+  //   document.getElementById("lbl_finding_result").textContent
+  // );
+  var e = document.getElementById("src_endpoint_path_list");
+  formData.append("src_endpoint_path", e.options[e.selectedIndex].value);
+
   fetch("http://localhost:5000/upload", {
     method: "POST",
     body: formData,

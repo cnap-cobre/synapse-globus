@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import List
 from typing import Dict
 import enum
+import jsonpickle
 
 
 class FileStatus(enum.Enum):
@@ -30,81 +31,84 @@ class FileStatus(enum.Enum):
 
 
 class FileData:
-    path = ''
-    size = 0
-    mru = 0
-    desc = ''
-    tags: List[str] = []
-    globus_path: List[str] = []
-    selected_globus_path: str
-    # 3/13/2020 - Either Globus/windows or browers do not take into account DST. So if the time
-    # difference is 3600 seconds exactly. then we will make this a runner up option, if we can't find it
-    # anywhere else.
-    globus_path_DST_offset: List[str] = []
-    time_imported: datetime.datetime
-    import_duration: datetime.timedelta = datetime.timedelta(-1)
-    import_result: Dict[str, str] = {}
+    # path = ''
+    # size = 0
+    # mru = 0
+    # desc = ''
+    # tags: List[str] = []
+    # globus_path: List[str] = []
+    # selected_globus_path: str
+    # # 3/13/2020 - Either Globus/windows or browers do not take into account DST. So if the time
+    # # difference is 3600 seconds exactly. then we will make this a runner up option, if we can't find it
+    # # anywhere else.
+    # globus_path_DST_offset: List[str] = []
+    # time_imported: datetime.datetime
+    # import_duration: datetime.timedelta = datetime.timedelta(-1)
+    # import_result: Dict[str, str] = {}
 
-    # IMPORTING: File has started being imported into Dataverse.
-    # IMPORTED: Final state. The file has successfully be imported into Dataverse.
-    # IMPORT_ERR: An unrecoverable error occurred while importing.
-    status_code: FileStatus = FileStatus.PENDING_IMPORT
+    # # IMPORTING: File has started being imported into Dataverse.
+    # # IMPORTED: Final state. The file has successfully be imported into Dataverse.
+    # # IMPORT_ERR: An unrecoverable error occurred while importing.
+    # status_code: FileStatus = FileStatus.PENDING_IMPORT
 
-    def __init__(self, filepath: str, filesize: int, filemru: int, filedesc: str, tag_data, globus_path: List[str] = [], dst_offset_path: List[str] = [], selected_gloubs_path: str = ''):
-        self.path = filepath
-        self.size = filesize
-        self.mru = filemru
-        self.desc = filedesc
-        self.tags = tag_data
-        self.globus_path = globus_path
-        self.globus_path_DST_offset = dst_offset_path
-        self.selected_globus_path = selected_gloubs_path
-        self.time_imported = datetime.datetime.min
+    def __init__(self, filepath: str, filesize: int, filemru: int):
+        self.path: str = filepath
+        self.size: int = filesize
+        self.mru: int = filemru
+        self.desc: str = ''
+        self.tags: List[str] = []
+        self.globus_path: List[str] = []
+        self.globus_path_DST_offset: List[str] = []
+        self.selected_globus_path: str = ''
+        self.time_imported: datetime.datetime = datetime.datetime.min
+        self.status_code: FileStatus = FileStatus.PENDING_IMPORT
 
     def toJSON(self):
-        formatted = self.toDict()
-        return json.dumps(formatted)
+        # formatted = self.toDict()
+        # return json.dumps(formatted)
+        return jsonpickle.encode(self, indent=4)
 
-    def toDict(self):
-        return {'path': self.path,
-                'size': self.size,
-                'mru': self.mru,
-                'desc': self.desc,
-                'tags': self.tags,
-                'gpath': self.globus_path,
-                'dstpath': self.globus_path_DST_offset,
-                'selected_globus_path': self.selected_globus_path,
-                'time_imported': self.time_imported,
-                'status_code': self.status_code.name,
-                'import_duration': self.import_duration,
-                'import_result': self.import_result
-                }
+    # def toDict(self):
+    #     return {'path': self.path,
+    #             'size': self.size,
+    #             'mru': self.mru,
+    #             'desc': self.desc,
+    #             'tags': self.tags,
+    #             'gpath': self.globus_path,
+    #             'dstpath': self.globus_path_DST_offset,
+    #             'selected_globus_path': self.selected_globus_path,
+    #             'time_imported': self.time_imported,
+    #             'status_code': self.status_code.name,
+    #             'import_duration': self.import_duration,
+    #             'import_result': self.import_result
+    #             }
+
+    # @staticmethod
+    # def fromDict(dd):
+    #     fd: FileData = FileData(filepath=dd['path'],
+    #                             filesize=dd['size'],
+    #                             filemru=dd['mru'],
+    #                             filedesc=dd['desc'],
+    #                             tag_data=dd['tags'],
+    #                             globus_path=dd['gpath'],
+    #                             dst_offset_path=dd['dstpath'],
+    #                             selected_gloubs_path=dd['selected_globus_path']
+    #                             )
+    #     if 'import_duration' in dd:
+    #         fd.import_duration = dd['import_duration']
+    #     if 'import_result' in dd:
+    #         fd.import_result = dd['import_result']
+    #     if 'time_imported' in dd:
+    #         fd.time_imported = dd['time_imported']
+    #     if 'status_code' in dd:
+    #         fd.status_code = FileStatus[dd['status_code']]
+    #     return fd
 
     @staticmethod
-    def fromDict(dd):
-        fd: FileData = FileData(filepath=dd['path'],
-                                filesize=dd['size'],
-                                filemru=dd['mru'],
-                                filedesc=dd['desc'],
-                                tag_data=dd['tags'],
-                                globus_path=dd['gpath'],
-                                dst_offset_path=dd['dstpath'],
-                                selected_gloubs_path=dd['selected_globus_path']
-                                )
-        if 'import_duration' in dd:
-            fd.import_duration = dd['import_duration']
-        if 'import_result' in dd:
-            fd.import_result = dd['import_result']
-        if 'time_imported' in dd:
-            fd.time_imported = dd['time_imported']
-        if 'status_code' in dd:
-            fd.status_code = FileStatus[dd['status_code']]
-        return fd
-
-    @staticmethod
-    def fromJSON(data):
-        dd = json.loads(data)
-        return FileData.fromDict(dd)
+    def fromJSON(data) -> FileData:
+        return jsonpickle.decode(data)
+        # dd = json.loads(data)
+        # return FileData.fromDict(dd)
 
 
 class Job:
@@ -121,9 +125,9 @@ class Job:
     msglog: List[str] = []
     notified: bool = False
     total_import_time: datetime.timedelta = datetime.timedelta(-1)
-    job_status:str = ''
-    last_updated:str = ''
-    percent_done:int = 0
+    job_status: str = ''
+    last_updated: str = ''
+    percent_done: int = 0
 
     def __init__(self, dataverse_user_id, globus_user_id, dataverse_dataset_id, job_id, globus_usr_name: str, srcEndPoint: str, globus_task_id: str = '', job_size_bytes: int = 0, dest_endpoint: str = '', log: List[str] = []):
         self.dv_user_id = dataverse_user_id
@@ -148,29 +152,30 @@ class Job:
     def toJSON(self):
         return json.dumps(self.toDict(), indent=4, sort_keys=True, default=str)
 
-    def toDict(self):
-        file_list = []
-        for fd in self.files:
-            file_list.append(fd.toDict())
-        return {'dvusrid': self.dv_user_id,
-                'gid': self.globus_id,
-                'gusr': self.globus_usr_name,
-                'dsid': self.dataset_id,
-                'jobid': self.job_id,
-                'srcEndPoint': self.srcEndPoint,
-                'gtask_id': self.globus_task_id,
-                'job_size': self.job_size_bytes,
-                'dest_endpoint': self.dest_endpoint,
-                'log': self.msglog,
-                'notified': self.notified,
-                'total_import_time': self.total_import_time,
-                'filedata': file_list}
+    # def toDict(self):
+    #     file_list = []
+    #     for fd in self.files:
+    #         file_list.append(fd.toDict())
+    #     return {'dvusrid': self.dv_user_id,
+    #             'gid': self.globus_id,
+    #             'gusr': self.globus_usr_name,
+    #             'dsid': self.dataset_id,
+    #             'jobid': self.job_id,
+    #             'srcEndPoint': self.srcEndPoint,
+    #             'gtask_id': self.globus_task_id,
+    #             'job_size': self.job_size_bytes,
+    #             'dest_endpoint': self.dest_endpoint,
+    #             'log': self.msglog,
+    #             'notified': self.notified,
+    #             'total_import_time': self.total_import_time,
+    #             'filedata': file_list}
 
     def todisk(self, directory: str):
         dirpath = Path(directory)
         dirpath.mkdir(parents=True, exist_ok=True)
         mdpath = dirpath / (self.job_id+'.json')
-        data = self.toJSON()
+        #data = self.toJSON()
+        data = jsonpickle.encode(self, indent=4)
         with open(mdpath, 'w') as f:
             f.write(data)
 
@@ -184,36 +189,37 @@ class Job:
     def from_disk_by_filepath(filepath: str) -> Job:
         with open(filepath, 'r') as f:
             raw: str = f.read()
-        d = json.loads(raw)
-        return Job.fromDict(d)
+        # d = json.loads(raw)
+        # return Job.fromDict(d)
+        return jsonpickle.decode(raw)
 
-    @staticmethod
-    def fromDict(dd):
-        j = Job(dataverse_user_id=dd['dvusrid'],
-                globus_user_id=dd['gid'],
-                dataverse_dataset_id=dd['dsid'],
-                job_id=dd['jobid'],
-                globus_usr_name=dd['gusr'],
-                srcEndPoint=dd['srcEndPoint'],
-                globus_task_id=dd['gtask_id'],
-                job_size_bytes=dd['job_size'],
-                dest_endpoint=dd['dest_endpoint'],
-                log=dd['log']
-                )
-        if 'total_import_time' in dd:
-            j.total_import_time = dd['total_import_time']
-        if 'notified' in dd:
-            j.notified = dd['notified']
+    # @staticmethod
+    # def fromDict(dd):
+    #     j = Job(dataverse_user_id=dd['dvusrid'],
+    #             globus_user_id=dd['gid'],
+    #             dataverse_dataset_id=dd['dsid'],
+    #             job_id=dd['jobid'],
+    #             globus_usr_name=dd['gusr'],
+    #             srcEndPoint=dd['srcEndPoint'],
+    #             globus_task_id=dd['gtask_id'],
+    #             job_size_bytes=dd['job_size'],
+    #             dest_endpoint=dd['dest_endpoint'],
+    #             log=dd['log']
+    #             )
+    #     if 'total_import_time' in dd:
+    #         j.total_import_time = dd['total_import_time']
+    #     if 'notified' in dd:
+    #         j.notified = dd['notified']
 
-        for f in dd['filedata']:
-            fo = FileData.fromDict(f)
-            j.files.append(fo)
-        return j
+    #     for f in dd['filedata']:
+    #         fo = FileData.fromDict(f)
+    #         j.files.append(fo)
+    #     return j
 
-    @staticmethod
-    def fromJSON(data):
-        dd = json.loads(data)
-        return Job.fromDict(dd)
+    # @staticmethod
+    # def fromJSON(data):
+    #     dd = json.loads(data)
+    #     return Job.fromDict(dd)
 
 
 def getID(dv_apiKey):
