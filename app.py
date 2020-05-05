@@ -269,7 +269,7 @@ def uploadGET():
             app.config['BASE_DV_URL'], sess.settings.dv_key)
     except dataset.AuthError as _ae:
         return redirect('/setdvkey?msg=Invalid_key')
-    datasets.insert(0, {'name': 'New Dataset...', 'entity_id': '0'})
+    datasets.insert(0, {'name': 'New Dataset...', 'entity_id': 0})
 
     return render_template('upload.html',
                            endpoints=endpoints,
@@ -279,7 +279,7 @@ def uploadGET():
                            guser=sess.settings.globus_usr,
                            dvkey=sess.settings.dv_key_masked,
                            datasets=datasets,
-                           mruDataset=sess.settings.dataset_id)
+                           mruDataset=int(sess.settings.dataset_id))
 
 
 @app.route('/updatedvkey', methods=['POST'])

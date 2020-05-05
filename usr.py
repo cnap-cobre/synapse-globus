@@ -16,7 +16,9 @@ class JobHistory():
     time_started: datetime.datetime
     time_ended: datetime.datetime
     bytes_xferred: int = 0
+    total_bytes: int = 0
     files_xferred: int = 0
+    total_files: int = 0
     percent_done: int = 0
     status_msg: str = ''
 
