@@ -3,6 +3,29 @@ var eventSource = new EventSource("/stream");
 eventSource.onmessage = function (e) {
   // targetContainer.innerHTML = e.data;
   $(".progress-bar").css("width", e.data).text(e.data);
+
+  if (e.data.length < 2) {
+    return;
+  }
+  var res = JSON.parse(e.data);
+  if (res.length < 1) {
+    return;
+  }
+  for (var i = 0; i < res.paths.length; i++) {
+    var job = res[i];
+    var job_div = document.getElementById("job_" + job.job_id);
+    if (job_div == null) {
+      alert(job.job_id + " doesn't exist!");
+    }
+    var pb = document.getElementById("pb_" + job.job_id);
+    pb.css("width", job.percent_done).text(job.percent_done);
+
+    // var opt = res.paths[i];
+    // var el = document.createElement("option");
+    // el.textContent = opt;
+    // el.value = opt;
+    // elSrcPath.appendChild(el);
+  }
 };
 
 // Drop handler function to get all files
@@ -155,13 +178,21 @@ function uploadFilesOnly() {
 
 function uploadFiles() {
   let formData = new FormData();
+  var src_ep = document.getElementById("endpoints");
+
   formData.append("file_list", elItems.innerHTML);
   formData.append("lab_type", document.getElementById("lab_type").value);
+  formData.append("selected_endpoint", src_ep.value);
   formData.append(
-    "selected_endpoint",
-    document.getElementById("endpoints").value
+    "src_endpoint_name",
+    src_ep.options[src_ep.selectedIndex].text
   );
-  formData.append("dataset_id", document.getElementById("dataset_id").value);
+  ds_select = document.getElementById("dataset_id");
+  formData.append("dataset_id", ds_select.value);
+  formData.append(
+    "dataset_name",
+    ds_select.options[ds_select.selectedIndex].text
+  );
   formData.append("description", document.getElementById("description").value);
   formData.append("tags", document.getElementById("tags").value);
   // formData.append(

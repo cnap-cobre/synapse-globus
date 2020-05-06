@@ -8,19 +8,21 @@ import jsonpickle
 
 
 class JobHistory():
-    # Synapse Job ID
-    job_id: str = ''
-    globus_id: str = ''
-    src_name: str = ''
-    dest_name: str = ''
-    time_started: datetime.datetime
-    time_ended: datetime.datetime
-    bytes_xferred: int = 0
-    total_bytes: int = 0
-    files_xferred: int = 0
-    total_files: int = 0
-    percent_done: int = 0
-    status_msg: str = ''
+
+    def __init__(self, globus_id: str):
+        # Synapse Job ID
+        self.job_id: str = ''
+        self.globus_id: str = globus_id
+        self.src_name: str = ''
+        self.dest_name: str = ''
+        self.time_started: datetime.datetime
+        self.time_ended: datetime.datetime
+        self.bytes_xferred: int = 0
+        self.total_bytes: int = 0
+        self.files_xferred: int = 0
+        self.total_files: int = 0
+        self.percent_done: int = 0
+        self.status_msg: str = ''
 
 
 class Settings2():
@@ -31,10 +33,9 @@ class Settings2():
         self.lab_id: str = ''
         self.dv_key: str = ''
         self.src_endpoint: str = ''
-        self.dataset_id: str = ''
-
-    # Dict[job_id]
-    job_history: Dict[str, str] = {}
+        self.dataset_id: str = '0'
+        self.job_history: Dict[str, JobHistory] = {}
+        # Dict[job_id]
 
     @property
     def dv_key_masked(self) -> str:

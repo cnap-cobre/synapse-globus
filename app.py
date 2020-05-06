@@ -271,6 +271,10 @@ def uploadGET():
         return redirect('/setdvkey?msg=Invalid_key')
     datasets.insert(0, {'name': 'New Dataset...', 'entity_id': 0})
 
+    jobs: List[usr.JobHistory] = list(sess.settings.job_history.values())
+    mru_jobs_desc: List[usr.JobHistory] = sorted(
+        jobs, key=lambda k: k.time_started, reverse=True)
+
     return render_template('upload.html',
                            endpoints=endpoints,
                            mruEndpointID=sess.settings.src_endpoint,
@@ -279,6 +283,7 @@ def uploadGET():
                            guser=sess.settings.globus_usr,
                            dvkey=sess.settings.dv_key_masked,
                            datasets=datasets,
+                           mru_jobs=mru_jobs_desc,
                            mruDataset=int(sess.settings.dataset_id))
 
 
@@ -287,7 +292,7 @@ def updateDVKey():
     sess: synapse_session.obj = get_session()
     sess.settings.dv_key = request.form['dvkey']
     sess.save_settings()
-    return redirect('/upload',)
+    return redirect('/upload')
 
 
 # def load_usr_settings() -> usr.settings2:
@@ -398,6 +403,19 @@ def uploadPOST():
 
     # Let's re-save the job to capture the task_id
     job.todisk(app.config['PENDING_PATH'])
+
+    # Let's make an entry in our user's settings file regarding our new job.
+    jh: usr.JobHistory = usr.JobHistory(sess._globus_id)
+    jh.job_id = job.job_id
+    jh.src_name = request.form['src_endpoint_name']
+    jh.dest_name = 'DV.'+request.form['dataset_name']
+    jh.time_started = datetime.datetime.now()
+    jh.status_msg = 'Job sent to globus'
+    jh.percent_done = 5
+    update_progress(jh)
+    # sess.settings.job_history[job.job_id] = jh
+    # sess.save_settings()
+
     # dirpath = Path(app.config['PENDING_PATH'])
     # dirpath.mkdir(parents=True,exist_ok=True)
     # mdpath = dirpath  / (job.job_id+'.json')
@@ -581,10 +599,22 @@ def get_message(msg):
     '''this could be any function that blocks until data is ready'''
     #  print('PERCENT DONE: '+str(msg))
     time.sleep(1.0)
-    # s = time.ctime(time.time())
-    s = str(msg*100) + "%"
-    if s == "0%":
-        s = ""
+
+    # s: synapse_session.obj = get_session()
+    # jh: usr.JobHistory = usr.JobHistory()
+    # jh.percent_done = datetime.datetime.now().second
+    # jh.src_name = 'DeepDell'
+    # jh.dest_name = 'DV.Christmas Elf Heights'
+    # jh.job_id =
+    # s.msg_for_client = {
+
+    # }
+    s = ""
+    # # s = time.ctime(time.time())
+    # s = str(msg*100) + "%"
+    # if s == "0%":
+    #     s = ""
+
     return s
 
 
@@ -599,20 +629,32 @@ def stream():
     return Response(stream_with_context(eventStream()), mimetype="text/event-stream")
 
 
+def update_progress(job: usr.JobHistory):
+    # Save the history to the store.
+
+    if len(job.globus_id) < 5:
+        raise Exception(
+            'JobID not set in usr.JobHistory parameter. Cannot load existing user object.')
+
+    us: usr.Settings2 = usr.Settings2.load(
+        app.config['USER_SETTINGS_PATH'], job.globus_id)
+    us.job_history[job.job_id] = job
+    us.save(app.config['USER_SETTINGS_PATH'])
+
+    # See if we have an active session that matches our globus_id
+    s: synapse_session.obj
+    for s in list(app.sessions_by_session_id.values()):
+        if s.globus_id == job.globus_id:
+            # Let's give this update to that sessions object,
+            # to be handled by that sessions' /stream
+            s.msg_for_client = json.dumps(job)
+
+
 @app.route('/updateFromDV', methods=['POST'])
 def update_from_dv():
     if str(request.remote_addr) in app.config['IP_WHITE_LIST']:
         job_update: usr.JobHistory = jsonpickle.decode(request.form['JOB'])
-        us: usr.settings2 = usr.settings2.load(
-            app.config['USER_SETTINGS_PATH'], job_update.globus_id)
-        us.job_history[job_update.job_id] = job_update
-        us.save(app.config['USER_SETTINGS_PATH'])
-
-        # See if we have an active session that matches our globus_id
-        s: synapse_session.obj
-        for s in self.sessions_by_session_id.values():
-            if s.__globus_id == job_update.globus_id:
-                s.msgs_for_client = request.form['JOB']
+        update_progress(job_update)
 
 
 @app.route('/link', methods=['POST'])
