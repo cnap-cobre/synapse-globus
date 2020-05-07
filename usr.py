@@ -25,6 +25,17 @@ class JobHistory():
         self.status_msg: str = ''
 
 
+class JobUpdate():
+
+    def __init__(self, globus_id: str, job_id: str = '', percent_done: int = 0, msg: str = ''):
+        #Used to identify which progress bar to update.
+        self.job_id: str = job_id
+        #Used to identify which active session(s) this update should be routed to.
+        self.globus_id: str = globus_id
+        self.percent_done: int = percent_done
+        self.status_msg: str = msg
+
+
 class Settings2():
 
     def __init__(self, globus_id: str):

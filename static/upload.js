@@ -2,29 +2,32 @@ var targetContainer = document.getElementById("target_div");
 var eventSource = new EventSource("/stream");
 eventSource.onmessage = function (e) {
   // targetContainer.innerHTML = e.data;
-  $(".progress-bar").css("width", e.data).text(e.data);
+  // $(".progress-bar").css("width", e.data).text(e.data);
 
   if (e.data.length < 2) {
     return;
   }
   var res = JSON.parse(e.data);
+
   if (res.length < 1) {
     return;
   }
-  for (var i = 0; i < res.paths.length; i++) {
-    var job = res[i];
-    var job_div = document.getElementById("job_" + job.job_id);
-    if (job_div == null) {
-      alert(job.job_id + " doesn't exist!");
-    }
-    var pb = document.getElementById("pb_" + job.job_id);
-    pb.css("width", job.percent_done).text(job.percent_done);
 
-    // var opt = res.paths[i];
-    // var el = document.createElement("option");
-    // el.textContent = opt;
-    // el.value = opt;
-    // elSrcPath.appendChild(el);
+  for (var j = 0; j < res.length; j++) {
+    var msg = res[j];
+    if (res[j]["py/object"] == "usr.JobUpdate") {
+      var job_update = res[j];
+      var job_div = document.getElementById("job_" + job_update.job_id);
+      if (job_div == null) {
+        alert(job_update.job_id + " doesn't exist!");
+      }
+      var pb = $("#pb_" + job_update.job_id);
+      pb.css("width", job_update.percent_done + "%");
+      pb.text(job_update.percent_done + "%");
+
+      var lblmsg = $("#msg_" + job_update.job_id);
+      lblmsg.innerHTML = job_update.status_msg;
+    }
   }
 };
 

@@ -13,7 +13,7 @@ class obj():
     # We need an update mechanism that updates more frequently for our server side updates
     # During upload. So we store our ID via the app.msgs_for_client variable.
     # The synapse_session_object is tied to the app rather than session.
-    msg_for_client: str = ''
+    msgs_for_client: List[object] = []
 
     usr_settings_path: str
     settings: Settings2
