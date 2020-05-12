@@ -19,7 +19,7 @@ eventSource.onmessage = function (e) {
       var job_update = res[j];
       var job_div = document.getElementById("job_" + job_update.job_id);
       if (job_div == null) {
-        alert(job_update.job_id + " doesn't exist!");
+        return;
       }
       var pb = $("#pb_" + job_update.job_id);
       pb.css("width", job_update.percent_done + "%");
@@ -27,6 +27,7 @@ eventSource.onmessage = function (e) {
 
       var lblmsg = $("#msg_" + job_update.job_id);
       lblmsg.innerHTML = job_update.status_msg;
+      $("#msg_" + job_update.job_id).text(job_update.status_msg);
     }
   }
 };

@@ -42,6 +42,14 @@
     {
       "name": "Flask/ChronJob",
       "configurations": ["Python: Flask", "Python: Current File"]
+    },
+    {
+      "name": "All",
+      "configurations": [
+        "Python: Flask",
+        "Launch Chrome",
+        "Python: Current File"
+      ]
     }
   ]
 }

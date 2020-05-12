@@ -30,6 +30,16 @@ class FileStatus(enum.Enum):
     #     return self.value == other.value
 
 
+class JobStatus(enum.Enum):
+    PENDING_XFER = 100
+    TRANSFERING = 200
+    PENDING_IMPORT = 300
+    IMPORTING = 400
+    COMPLETED = 500
+    TRANFER_ERROR = -10
+    IMPORT_ERROR = -20
+
+
 class FileData:
     # path = ''
     # size = 0
@@ -125,7 +135,7 @@ class Job:
     msglog: List[str] = []
     notified: bool = False
     total_import_time: datetime.timedelta = datetime.timedelta(-1)
-    job_status: str = ''
+    job_status: JobStatus = JobStatus.PENDING_IMPORT
     last_updated: str = ''
     percent_done: int = 0
 
@@ -142,6 +152,7 @@ class Job:
         self.msglog = log
         self.files = []
         self.total_import_time = datetime.timedelta(-1)
+        self.job_status: JobStatus = JobStatus.PENDING_IMPORT
 
     def log(self, msg: str):
         self.msglog.append(str(datetime.datetime.now())+' '+msg)

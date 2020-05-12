@@ -9,12 +9,14 @@ from typing import Dict
 import globus
 import db
 import json
+import usr
+import jsonpickle
+import time
 
 creds_path = 'c:/temp/synapse_chron.creds'
 
 
 def execute():
-
     conf: Dict[str, str] = {}
     with open(creds_path, 'r') as f:
         raw = f.read()
@@ -43,6 +45,10 @@ def execute():
     j: xferjob.Job
 
     for j in manifests.values():
+
+        if j.job_status == xferjob.JobStatus.COMPLETED:
+            continue
+
         res = globus.svr_transfer_status(
             creds_path, j.globus_task_id)
         print(str(res))
@@ -57,36 +63,89 @@ def execute():
             if apikey == '':
                 raise Exception("Cannot find apikey for jobid "+j.job_id)
             fd: xferjob.fileData = None
-            jobstarttime = datetime.datetime.now()
-            for fd in j.files:
-                if fd.status_code == xferjob.FileStatus.IMPORTED:
-                    continue
-                filepath = (conf['GLOBUS_DEST_DIR'] + "/" +
-                            j.job_id+"/"+fd.path).replace("//", "/")
-                starttime = datetime.datetime.now()
-                fd.import_result = upload.onefile(server=conf['DATAVERSE_BASE_URL'],
-                                                  api_key=apikey,
-                                                  dataset_id=j.dataset_id,
-                                                  filepath=filepath,
-                                                  desc=fd.desc,
-                                                  cats=fd.tags)
-                if (fd.import_result['status'] == 'OK' or
-                        (fd.import_result['status'] == 'ERROR' and 'This file already exists' in fd.import_result['message'])):
-                    fd.import_duration = datetime.datetime.now() - starttime
-                    fd.status_code = xferjob.FileStatus.IMPORTED
-                    fd.time_imported = datetime.datetime.now()
-                else:
-                    fd.status_code = xferjob.FileStatus.IMPORT_ERR
-                    print("Error Importing file: "+fd.import_result['message'])
-                j.todisk(conf['ACTIVE_MANIFEST_DIR'])
-            j.total_import_time = datetime.datetime.now() - jobstarttime
-            j.todisk(conf['ACTIVE_MANIFEST_DIR'])
-            print("Done!")
-    #
+            import_files(j, conf, apikey)
+            # jobstarttime = datetime.datetime.now()
+            # for fd in j.files:
+            #     if fd.status_code == xferjob.FileStatus.IMPORTED:
+            #         continue
+            #     filepath = (conf['GLOBUS_DEST_DIR'] + "/" +
+            #                 j.job_id+"/"+fd.path).replace("//", "/")
+            #     starttime = datetime.datetime.now()
+            #     fd.import_result = upload.onefile(server=conf['DATAVERSE_BASE_URL'],
+            #                                       api_key=apikey,
+            #                                       dataset_id=j.dataset_id,
+            #                                       filepath=filepath,
+            #                                       desc=fd.desc,
+            #                                       cats=fd.tags)
+            #     if (fd.import_result['status'] == 'OK' or
+            #             (fd.import_result['status'] == 'ERROR' and 'This file already exists' in fd.import_result['message'])):
+            #         fd.import_duration = datetime.datetime.now() - starttime
+            #         fd.status_code = xferjob.FileStatus.IMPORTED
+            #         fd.time_imported = datetime.datetime.now()
+            #     else:
+            #         fd.status_code = xferjob.FileStatus.IMPORT_ERR
+            #         print("Error Importing file: "+fd.import_result['message'])
+            #     j.todisk(conf['ACTIVE_MANIFEST_DIR'])
+            # j.total_import_time = datetime.datetime.now() - jobstarttime
+            # j.todisk(conf['ACTIVE_MANIFEST_DIR'])
+            # print("Done!")
+
+
+def import_files(j: xferjob.Job, conf: Dict[str, str], apikey: str):
+    status: usr.JobUpdate = usr.JobUpdate(
+        j.globus_id, j.job_id, 55, 'Importing into Dataverse...')
+    cnt_done: int = 0
+    errs: List[str] = []
+    # We might be resuming after an interruption. Let's check.
+    fd: xferjob.fileData = None
+    for fd in j.files:
+        if fd.status_code == xferjob.FileStatus.IMPORTED:
+            cnt_done += 1
+    status.percent_done = int((cnt_done / len(j.files)) * 100)
+    post_status_update(conf['SYNAPSE_SERVER'], status)
+    jobstarttime = datetime.datetime.now()
+    for fd in j.files:
+        if fd.status_code == xferjob.FileStatus.IMPORTED:
+            continue
+        filepath = (conf['GLOBUS_DEST_DIR'] + "/" +
+                    j.job_id+"/"+fd.path).replace("//", "/")
+        starttime = datetime.datetime.now()
+        fd.import_result = upload.onefile(server=conf['DATAVERSE_BASE_URL'],
+                                          api_key=apikey,
+                                          dataset_id=j.dataset_id,
+                                          filepath=filepath,
+                                          desc=fd.desc,
+                                          cats=fd.tags)
+        if (fd.import_result['status'] == 'OK' or
+                (fd.import_result['status'] == 'ERROR' and 'This file already exists' in fd.import_result['message'])):
+            fd.import_duration = datetime.datetime.now() - starttime
+            fd.status_code = xferjob.FileStatus.IMPORTED
+            fd.time_imported = datetime.datetime.now()
+        else:
+            fd.status_code = xferjob.FileStatus.IMPORT_ERR
+            print("Error Importing file: "+fd.import_result['message'])
+        j.todisk(conf['ACTIVE_MANIFEST_DIR'])
+        cnt_done += 1
+        status.percent_done = int((cnt_done / len(j.files)) * 100)
+        post_status_update(conf['SYNAPSE_SERVER'], status)
+    j.job_status = xferjob.JobStatus.COMPLETED
+    j.total_import_time = datetime.datetime.now() - jobstarttime
+    j.todisk(conf['ACTIVE_MANIFEST_DIR'])
+    j.todisk(conf['ARCHIVED_MANIFEST_DIR'])
+    status.percent_done = 100
+    status.status_msg = 'Job completed ' + datetime.datetime.now().ctime()
+    post_status_update(conf['SYNAPSE_SERVER'], status)
+    print("Done!")
+
+
+def post_status_update(server_uri: str, status: usr.JobUpdate):
+    data: str = jsonpickle.encode(status)
+    url = '%s/updateFromDV' % (server_uri)
+    r = requests.post(url, data)
+    print(str(r))
 
 
 def lookup_api_key(keys: List[str], encoded_key: str) -> str:
-
     # hash = encodedkey[:-4]
     # checksum = encodedkey[-3:]
     candidate: str = ''
@@ -130,4 +189,10 @@ def download_manifest(server_uri: str, job_id: str, active_manifest_dir: str) ->
     return job
 
 
-execute()
+v: str = input("Press Enter to execute Chron Job loop. Type exit to quit.")
+while True:
+    v = input("Press Enter to execute Chron Job loop. Type exit to quit.")
+    if v.lower() != 'exit':
+        execute()
+    else:
+        exit()

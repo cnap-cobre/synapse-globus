@@ -275,6 +275,16 @@ def uploadGET():
     mru_jobs_desc: List[usr.JobHistory] = sorted(
         jobs, key=lambda k: k.time_started, reverse=True)
 
+    # mru_jobs: List[usr.JobHistory] = []
+    # mj: usr.JobHistory
+    # for mj in mru_jobs_desc:
+    #     if mj.percent_done < 100:
+    #         mru_jobs.append(mj)
+    # while len(mru_jobs) < 3:
+    #     for mj in mru_jobs_desc:
+    #         if not mj in mru_jobs:
+    #             mru_jobs.append(mj)
+
     return render_template('upload.html',
                            endpoints=endpoints,
                            mruEndpointID=sess.settings.src_endpoint,
@@ -292,7 +302,7 @@ def updateDVKey():
     sess: synapse_session.obj = get_session()
     sess.settings.dv_key = request.form['dvkey']
     sess.save_settings()
-    return redirect('/upload')
+    return redirect(url_for('uploadGET'))
 
 
 # def load_usr_settings() -> usr.settings2:
@@ -451,7 +461,7 @@ def uploadPOST():
 
     #     # upload.files(app.config['BASE_DV_URL'],session[usr.settings.DV_KEY],job,Path('c:/temp/dvdata'))
     #     print("Upload finished!")
-    return redirect('/upload')
+    return redirect(url_for('uploadGET'))
 
 # TODO: Also limit by Dataverse IP address(es)?
 @app.route("/pending")
@@ -666,7 +676,7 @@ def update_progress(update: usr.JobUpdate):
 @app.route('/updateFromDV', methods=['POST'])
 def update_from_dv():
     if str(request.remote_addr) in app.config['IP_WHITE_LIST']:
-        job_update: usr.JobUpdate = jsonpickle.decode(request.form['JOB'])
+        job_update: usr.JobUpdate = jsonpickle.decode(request.data)
         update_progress(job_update)
 
 
