@@ -148,8 +148,6 @@ function uploadFilesOnly() {
     },
     success: function (response) {
       var res = JSON.parse(response);
-      // alert(res);
-      // alert(res.paths[0]);
       var elSrcPath = document.getElementById("src_endpoint_path_list");
 
       //Remove all existing options.
@@ -174,7 +172,7 @@ function uploadFilesOnly() {
       elfinding.style.display = "none";
     },
     error: function (xhr) {
-      alert(xhr);
+      alert(String(xhr));
       elfinding.style.display = "none";
     },
   });

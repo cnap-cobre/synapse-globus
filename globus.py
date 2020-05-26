@@ -182,7 +182,7 @@ def setupXfer(credspath: str, globus_usr: str, globus_usr_id: str, dv_endpoint_i
 
 
 def createDir(tc: globus_sdk.TransferClient, dv_endpoint_id: str, dirName: str):
-    result:str = 'Create directory not yet ran.'
+    result: str = 'Create directory not yet ran.'
     try:
         tr = tc.operation_mkdir(dv_endpoint_id, '/~/'+dirName)
         print(str(tr))
@@ -481,3 +481,8 @@ def usr_transfer_status(tc: globus_sdk.TransferClient, task_id: str):
     # https://docs.globus.org/api/transfer/task/#task_document
     response = asdf.get_task(task_id)
     response['status']
+
+
+def get_events(tc: globus_sdk.TransferClient, task_id: str):
+    # https://docs.globus.org/api/transfer/task/#get_event_list
+    pass

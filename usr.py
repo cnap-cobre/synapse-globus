@@ -24,7 +24,12 @@ class JobHistory():
         self.total_files: int = 0
         self.percent_done: int = 0
         self.status_msg: str = ''
+        self.error: bool = False
+        self.src_type: int = 0
+        self.dest_type: int = 1
         # self.status: xferjob.JobStatus = xferjob.JobStatus.PENDING_XFER
+
+        # src/dest_type: 0=Generic Globus Endpoint, 1=Dataverse, 2=Beocat
 
 
 class JobUpdate():
@@ -36,6 +41,7 @@ class JobUpdate():
         self.globus_id: str = globus_id
         self.percent_done: int = percent_done
         self.status_msg: str = msg
+        self.error: bool = False
 
 
 class Settings2():

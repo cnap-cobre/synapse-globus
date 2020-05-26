@@ -1,4 +1,5 @@
 from flask import Flask, url_for, session, redirect, request, render_template, Response, stream_with_context
+from flask.logging import default_handler
 import datetime
 import re
 import os
@@ -20,7 +21,19 @@ import hashlib
 import jsonpickle
 from typing import Dict
 import synapse_session
+import logging
+from logging.handlers import RotatingFileHandler
 # import redis
+
+# Setup logging
+log_formatter = logging.Formatter(
+    '%(asctime)s %(levelname)s %(filename)s->%(funcName)s:(%(lineno)d) %(threadName)s %(message)s')
+logFile = 'synapse_websvr_log'
+my_handler = RotatingFileHandler(logFile, mode='a', maxBytes=5*1024*1024,
+                                 backupCount=2, encoding=None, delay=False)
+my_handler.setFormatter(log_formatter)
+my_handler.setLevel(logging.DEBUG)
+log = logging.getLogger('ksu.synapse.websvr')
 
 
 class CustomFlask(Flask):
@@ -40,6 +53,10 @@ class CustomFlask(Flask):
 
 
 app = CustomFlask(__name__)
+app.logger.setLevel(logging.DEBUG)
+app.logger.addHandler(my_handler)
+app.logger.removeHandler(default_handler)
+app.logger.info('Hello!')
 app._static_folder = 'static'
 app._static_url_path = ''
 app.config.from_pyfile('app.conf')
@@ -238,6 +255,7 @@ def logout():
 
 @app.route("/upload")
 def uploadGET():
+    app.logger.debug('Method Entry')
     # session['data'] = {'percent_done':0}
     sess: synapse_session.obj = get_session()
     # if 'session_id' not in session:
@@ -285,7 +303,7 @@ def uploadGET():
     #         if not mj in mru_jobs:
     #             mru_jobs.append(mj)
 
-    return render_template('upload.html',
+    return render_template('upload2.jinja',
                            endpoints=endpoints,
                            mruEndpointID=sess.settings.src_endpoint,
                            labs=labs,
@@ -422,6 +440,9 @@ def uploadPOST():
     jh.time_started = datetime.datetime.now()
     jh.status_msg = 'Job sent to globus'
     jh.percent_done = 5
+    jh.src_type = 0
+    jh.dest_type = 1
+
     sess.settings.job_history[job.job_id] = jh
     sess.save_settings()
 
@@ -676,8 +697,17 @@ def update_progress(update: usr.JobUpdate):
 @app.route('/updateFromDV', methods=['POST'])
 def update_from_dv():
     if str(request.remote_addr) in app.config['IP_WHITE_LIST']:
-        job_update: usr.JobUpdate = jsonpickle.decode(request.data)
-        update_progress(job_update)
+        # Need to figure out what type of message this is:
+        # 1. usr.JobUpdate msg for progess bars.
+        # 2. joblog.Entry msg for logging.
+
+        msg = jsonpickle.decode(request.data)
+        if type(msg) is usr.JobUpdate:
+            update_progress(job_update)
+        elif type(msg) is joblog.Entry:
+            msg.todisk(app.conf['JOB_LOG_PATH'])
+        else:
+            app.logger.warning("Don't know how to handle msg type: "+str(msg))
 
 
 @app.route('/link', methods=['POST'])

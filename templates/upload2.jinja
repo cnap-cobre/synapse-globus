@@ -1,0 +1,111 @@
+{% include 'base2.jinja' %}
+{% include 'progress_cards.jinja' %}
+
+<!--Main upload-->
+<div class="row">
+  <div class="col-md-12">
+    <div class="card mb-3">
+      <!--<div class="card-body" id="year-comparison-chart"></div>-->
+      <form role="form">
+        <div class="card-header uppercase">
+          <div class="caption">
+            <i class="fa fa-cloud-upload"></i> Upload to Dataverse
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-group">
+            <label>Globus Source</label>
+            <select id="endpoints" class="form-control selectpicker">
+              {% for key,value in endpoints.items() %}
+                <option {% if mruEndpointID == key %} selected='selected' {% endif %} value='%%key%%'>%%value["display_name"]%%</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Files to Upload</label>
+            <div id="dropzone" class="dropzone" effectAllowed="move">
+              <h1>
+                <p class="text-center">
+                  <i class="h1 text-muted fa fa-cloud-upload text-light"></i>
+                </p>
+              </h1>
+              <h3><p id="finding" class="text-center">Drop files here.</p></h3>
+        
+              <ul id="items" hidden></ul>
+              <h3><ul id="lbl_status"></ul><ul id="target_div">%%status_update%%</ul></h3>
+              <div id="finding" style="display: none;">
+                <p class="text-center">
+                  Finding Files in Globus Endpoint...
+                  <button class="btn btn-primary" type="button" disabled>
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    {# Cancel #}
+                  </button>
+                </p>
+              </div>
+              
+
+            </div>
+            
+            <div id="finding_result" style="display: none;">
+              <h3><label id="lbl_path_msg"></label>
+              <select id="src_endpoint_path_list"></select></h3>
+            </div>
+
+          </div>
+
+
+          <div class="form-group">
+            <label>Your Lab</label>
+            <select id="lab_type" class="form-control selectpicker">
+              {% for key,value in labs.items() %}
+                <option {% if mruLab == value.id_num() %} selected='selected' {% endif %} value='%%value.id_num()%%'>%%value.display_name()%%</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Upload to Dataset</label>
+            <select id="dataset_id" class="form-control selectpicker">
+              {% for rec in datasets %}
+                <option {% if mruDataset == rec['entity_id'] %} selected='selected' {% endif %} value='%%rec['entity_id']%%'>%%rec['name']%%</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label
+              >(Optional) Description to apply to every file for data
+              discovery</label
+            >
+            <textarea
+              id="description"
+              class="form-control"
+              aria-label="With textarea"
+            ></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Keywords to apply (separated by commas)</label>
+            <input
+              id="tags"
+              type="text"
+              class="form-control"
+              placeholder="tag 1, tag2..."
+            />
+          </div>
+        </div>
+
+        <div class="card-footer">
+          <button type="submit" class="btn btn-primary" onclick="uploadFiles()">
+            <i class="ti-new-window"></i> Submit
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript" src="static/upload.js"></script>
+
+{% include 'footer.jinja' %}

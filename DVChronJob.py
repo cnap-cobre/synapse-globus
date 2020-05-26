@@ -124,6 +124,9 @@ def import_files(j: xferjob.Job, conf: Dict[str, str], apikey: str):
         else:
             fd.status_code = xferjob.FileStatus.IMPORT_ERR
             print("Error Importing file: "+fd.import_result['message'])
+            status.error = True
+            status.status_msg = "Error Importing " + \
+                fd.name+": "+fd.import_result['message']
         j.todisk(conf['ACTIVE_MANIFEST_DIR'])
         cnt_done += 1
         status.percent_done = int((cnt_done / len(j.files)) * 100)
@@ -193,6 +196,10 @@ v: str = input("Press Enter to execute Chron Job loop. Type exit to quit.")
 while True:
     v = input("Press Enter to execute Chron Job loop. Type exit to quit.")
     if v.lower() != 'exit':
+        start: datetime.datetime = datetime.datetime.now()
         execute()
+        endtime: datetime.datetime = datetime.datetime.now()
+        print("Time to execute: "+str(endtime - start))
+        time.sleep(5)
     else:
         exit()

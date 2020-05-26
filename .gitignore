@@ -1,2 +1,4 @@
 app.conf
 .mypy_cache/
+node_modules
+synapse_websvr_log
