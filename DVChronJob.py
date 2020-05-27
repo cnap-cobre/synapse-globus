@@ -12,6 +12,20 @@ import json
 import usr
 import jsonpickle
 import time
+import logging
+from logging.handlers import RotatingFileHandler
+
+log_formatter = logging.Formatter(
+    '%(asctime)s %(levelname)s %(filename)s->%(funcName)s:(%(lineno)d) %(threadName)s %(message)s')
+logFile = 'synapse_dataverse_service.log'
+my_handler = RotatingFileHandler(logFile, mode='a', maxBytes=5*1024*1024,
+                                 backupCount=2, encoding=None, delay=False)
+my_handler.setFormatter(log_formatter)
+my_handler.setLevel(logging.DEBUG)
+log = logging.getLogger()
+log.setLevel(logging.DEBUG)
+log.addHandler(my_handler)
+log.addHandler(logging.StreamHandler())
 
 creds_path = 'c:/temp/synapse_chron.creds'
 
@@ -52,6 +66,11 @@ def execute():
         res = globus.svr_transfer_status(
             creds_path, j.globus_task_id)
         print(str(res))
+
+        # Post status update.
+        update: usr.JobUpdate = usr.JobUpdate.fromGlobusTaskObj(j, res)
+        post_status_update(conf['SYNAPSE_SERVER'], update)
+
         if res['status'] == 'SUCCEEDED':
             # We need to import. If we don't already have a
             # api key list. Let's grab it from the db.
@@ -110,12 +129,17 @@ def import_files(j: xferjob.Job, conf: Dict[str, str], apikey: str):
         filepath = (conf['GLOBUS_DEST_DIR'] + "/" +
                     j.job_id+"/"+fd.path).replace("//", "/")
         starttime = datetime.datetime.now()
-        fd.import_result = upload.onefile(server=conf['DATAVERSE_BASE_URL'],
-                                          api_key=apikey,
-                                          dataset_id=j.dataset_id,
-                                          filepath=filepath,
-                                          desc=fd.desc,
-                                          cats=fd.tags)
+        try:
+            fd.import_result = upload.onefile(server=conf['DATAVERSE_BASE_URL'],
+                                              api_key=apikey,
+                                              dataset_id=j.dataset_id,
+                                              filepath=filepath,
+                                              desc=fd.desc,
+                                              cats=fd.tags)
+
+        except Exception as ex2:
+            fd.import_result = {'status': 'ERROR', 'message': str(ex2)}
+
         if (fd.import_result['status'] == 'OK' or
                 (fd.import_result['status'] == 'ERROR' and 'This file already exists' in fd.import_result['message'])):
             fd.import_duration = datetime.datetime.now() - starttime
@@ -123,13 +147,14 @@ def import_files(j: xferjob.Job, conf: Dict[str, str], apikey: str):
             fd.time_imported = datetime.datetime.now()
         else:
             fd.status_code = xferjob.FileStatus.IMPORT_ERR
-            print("Error Importing file: "+fd.import_result['message'])
+            fd.status_details = str(fd.import_result)
+            log.warning("Error Importing file: "+fd.import_result['message'])
             status.error = True
             status.status_msg = "Error Importing " + \
                 fd.name+": "+fd.import_result['message']
         j.todisk(conf['ACTIVE_MANIFEST_DIR'])
         cnt_done += 1
-        status.percent_done = int((cnt_done / len(j.files)) * 100)
+        status.percent_done = usr.calcProgress(2, cnt_done / len(j.files))
         post_status_update(conf['SYNAPSE_SERVER'], status)
     j.job_status = xferjob.JobStatus.COMPLETED
     j.total_import_time = datetime.datetime.now() - jobstarttime
@@ -192,14 +217,14 @@ def download_manifest(server_uri: str, job_id: str, active_manifest_dir: str) ->
     return job
 
 
-v: str = input("Press Enter to execute Chron Job loop. Type exit to quit.")
+# v: str = input("Press Enter to execute Chron Job loop. Type exit to quit.")
 while True:
-    v = input("Press Enter to execute Chron Job loop. Type exit to quit.")
-    if v.lower() != 'exit':
-        start: datetime.datetime = datetime.datetime.now()
-        execute()
-        endtime: datetime.datetime = datetime.datetime.now()
-        print("Time to execute: "+str(endtime - start))
-        time.sleep(5)
-    else:
-        exit()
+    # v = input("Press Enter to execute Chron Job loop. Type exit to quit.")
+    # if v.lower() != 'exit':
+    start: datetime.datetime = datetime.datetime.now()
+    execute()
+    endtime: datetime.datetime = datetime.datetime.now()
+    log.debug("Sec to execute loop: "+str((endtime - start).total_seconds()))
+    time.sleep(5)
+    # else:
+    #     exit()

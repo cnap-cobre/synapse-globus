@@ -51,19 +51,19 @@
 
         <div class="progress progress-bar-sm">
           <div
-            class="%%progress_type(rec['percent_done'],rec['error'])%%"
+            class="%%progress_type(rec.last_update.percent_done,rec['error'])%%"
             role="progressbar"
-            style="width: %%rec[ 'percent_done' ]%%%;"
+            style="width: %%rec.last_update.percent_done%%%;"
             aria-valuenow="70"
             aria-valuemin="0"
             aria-valuemax="100"
             id="pb_%%rec['job_id']%%"
           >
-            %%rec['percent_done']%%%
+            %%rec.last_update.percent_done%%%
           </div>
         </div>
         <div class="progress-text text-secondary">
-          <small><p id="msg_%%rec['job_id']%%">%%rec['status_msg']%%</p></small>
+          <small><p id="msg_%%rec['job_id']%%">%%rec.last_update.status_msg%%</p></small>
         </div>
       </div>
     </div>

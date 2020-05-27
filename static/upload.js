@@ -1,6 +1,8 @@
+// import { parseComponent } from "vue-template-compiler";
+
 var targetContainer = document.getElementById("target_div");
 var eventSource = new EventSource("/stream");
-eventSource.onmessage = function (e) {
+eventSource.onmessage = function(e) {
   // targetContainer.innerHTML = e.data;
   // $(".progress-bar").css("width", e.data).text(e.data);
 
@@ -24,6 +26,13 @@ eventSource.onmessage = function (e) {
       var pb = $("#pb_" + job_update.job_id);
       pb.css("width", job_update.percent_done + "%");
       pb.text(job_update.percent_done + "%");
+
+      if (job_update.percent_done == 100) {
+        pb.removeClass(
+          "progress-bar progress-bar-striped progress-bar-animated bg-info"
+        );
+        pb.addClass("progress-bar bg-success");
+      }
 
       var lblmsg = $("#msg_" + job_update.job_id);
       lblmsg.innerHTML = job_update.status_msg;
@@ -60,7 +69,7 @@ async function getAllFileEntries(dataTransferItemList) {
       //console.debug('right before entry.file.');
       filesToProcess += 1;
       entry.file(
-        function (fileobj) {
+        function(fileobj) {
           //fileobj = f;
           var data_we_want = {
             name: fileobj.name,
@@ -72,7 +81,7 @@ async function getAllFileEntries(dataTransferItemList) {
           fileEntries.push(data_we_want);
           filesToProcess -= 1;
         },
-        function () {
+        function() {
           console.debug("err");
           filesToProcess -= 1;
         }
@@ -121,12 +130,12 @@ var elStatus = document.getElementById("lbl_status");
 var elfinding = document.getElementById("finding");
 var elfindingResult = document.getElementById("finding_result");
 
-elDrop.addEventListener("dragover", function (event) {
+elDrop.addEventListener("dragover", function(event) {
   event.preventDefault();
   elItems.innerHTML = 0;
 });
 
-elDrop.addEventListener("drop", async function (event) {
+elDrop.addEventListener("drop", async function(event) {
   event.preventDefault();
   console.debug(event);
   let files_found = await getAllFileEntries(event.dataTransfer.items);
@@ -146,7 +155,7 @@ function uploadFilesOnly() {
       file_list: elItems.innerHTML,
       selected_endpoint: document.getElementById("endpoints").value,
     },
-    success: function (response) {
+    success: function(response) {
       var res = JSON.parse(response);
       var elSrcPath = document.getElementById("src_endpoint_path_list");
 
@@ -171,7 +180,7 @@ function uploadFilesOnly() {
       elfindingResult.style.display = "block";
       elfinding.style.display = "none";
     },
-    error: function (xhr) {
+    error: function(xhr) {
       alert(String(xhr));
       elfinding.style.display = "none";
     },

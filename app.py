@@ -28,7 +28,7 @@ from logging.handlers import RotatingFileHandler
 # Setup logging
 log_formatter = logging.Formatter(
     '%(asctime)s %(levelname)s %(filename)s->%(funcName)s:(%(lineno)d) %(threadName)s %(message)s')
-logFile = 'synapse_websvr_log'
+logFile = 'synapse_websvr.log'
 my_handler = RotatingFileHandler(logFile, mode='a', maxBytes=5*1024*1024,
                                  backupCount=2, encoding=None, delay=False)
 my_handler.setFormatter(log_formatter)
@@ -311,7 +311,7 @@ def uploadGET():
                            guser=sess.settings.globus_usr,
                            dvkey=sess.settings.dv_key_masked,
                            datasets=datasets,
-                           mru_jobs=mru_jobs_desc,
+                           mru_jobs=mru_jobs_desc[:3],
                            mruDataset=int(sess.settings.dataset_id))
 
 
@@ -482,6 +482,7 @@ def uploadPOST():
 
     #     # upload.files(app.config['BASE_DV_URL'],session[usr.settings.DV_KEY],job,Path('c:/temp/dvdata'))
     #     print("Upload finished!")
+    print('Redirecting to get!!!!')
     return redirect(url_for('uploadGET'))
 
 # TODO: Also limit by Dataverse IP address(es)?
@@ -670,9 +671,10 @@ def stream():
     return Response(stream_with_context(eventStream()), mimetype="text/event-stream")
 
 
-def update_progress(update: usr.JobUpdate):
+def update_progress(update: usr.JobUpdate) -> bool:
+    saved: bool = False
     # Save the history to the store.
-
+    print("inside update_progress")
     if len(update.globus_id) < 5:
         raise Exception(
             'JobID not set in update parameter. Cannot load existing user object.')
@@ -681,9 +683,9 @@ def update_progress(update: usr.JobUpdate):
         app.config['USER_SETTINGS_PATH'], update.globus_id)
 
     if update.job_id in us.job_history:
-        us.job_history[update.job_id].percent_done = update.percent_done
-        us.job_history[update.job_id].status_msg = update.status_msg
+        us.job_history[update.job_id].last_update = update
         us.save(app.config['USER_SETTINGS_PATH'])
+        saved = True
 
     # See if we have an active session that matches our globus_id
     s: synapse_session.obj
@@ -692,6 +694,7 @@ def update_progress(update: usr.JobUpdate):
             # Let's give this update to that sessions object,
             # to be handled by that sessions' /stream
             s.msgs_for_client.append(update)
+    return saved
 
 
 @app.route('/updateFromDV', methods=['POST'])
@@ -703,7 +706,10 @@ def update_from_dv():
 
         msg = jsonpickle.decode(request.data)
         if type(msg) is usr.JobUpdate:
-            update_progress(job_update)
+            if update_progress(msg):
+                # We've updated our disk. Let caller know, so
+                # They won't re-transmit.
+                return '1'
         elif type(msg) is joblog.Entry:
             msg.todisk(app.conf['JOB_LOG_PATH'])
         else:

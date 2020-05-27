@@ -457,7 +457,10 @@ def svr_transfer_status(credspath: str, task_id: str):
     fr.close()
 
     tc = getNativeTransferClient(native_client_id, refresh_token)
+    return usr_transfer_status(tc, task_id)
 
+
+def usr_transfer_status(tc: globus_sdk.TransferClient, task_id: str):
     res = tc.endpoint_manager_get_task(task_id)
     # https://docs.globus.org/api/transfer/task/#task_document
 
@@ -474,13 +477,6 @@ def svr_transfer_status(credspath: str, task_id: str):
         msg = 'UNKNOWN STATUS'
     endresult = {'status': res.data['status'], 'data': res.data, 'msg': msg}
     return endresult
-
-
-def usr_transfer_status(tc: globus_sdk.TransferClient, task_id: str):
-    asdf: globus_sdk.TransferClient = None
-    # https://docs.globus.org/api/transfer/task/#task_document
-    response = asdf.get_task(task_id)
-    response['status']
 
 
 def get_events(tc: globus_sdk.TransferClient, task_id: str):

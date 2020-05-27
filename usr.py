@@ -25,11 +25,10 @@ class JobHistory():
         self.percent_done: int = 0
         self.status_msg: str = ''
         self.error: bool = False
+        # src/dest_type: 0=Generic Globus Endpoint, 1=Dataverse, 2=Beocat
         self.src_type: int = 0
         self.dest_type: int = 1
-        # self.status: xferjob.JobStatus = xferjob.JobStatus.PENDING_XFER
-
-        # src/dest_type: 0=Generic Globus Endpoint, 1=Dataverse, 2=Beocat
+        self.last_update: JobUpdate = JobUpdate(globus_id)
 
 
 class JobUpdate():
@@ -42,6 +41,29 @@ class JobUpdate():
         self.percent_done: int = percent_done
         self.status_msg: str = msg
         self.error: bool = False
+
+    @staticmethod
+    def fromGlobusTaskObj(j: xferjob.Job, res: Dict) -> JobUpdate:
+        xfered: int = res['data']['files_transferred']
+        skipped: int = res['data']['files_skipped']
+        bps: int = res['data']['effective_bytes_per_second']
+        mbps: float = float(bps / 1024 / 1024)
+        cntdone: int = xfered+skipped
+        prog: int = calcProgress(1, cntdone/len(j.files))
+        msg: str = 'Moving via Globus. '+str(xfered)+' copied, '+str(skipped) + \
+            " skipped "+str(round(mbps, 2))+' MB/sec'
+        update = JobUpdate(j.globus_id, j.job_id, prog, msg)
+        return update
+
+
+def calcProgress(step: int, stepPercent: float) -> int:
+    if step == 0:
+        return 5
+    if step == 1:
+        return 5+int(stepPercent * 100 * .5)
+    if step == 2:
+        return 55+int(stepPercent * 100 * .45)
+    raise NotImplementedError("Haven't implemented step "+str(step))
 
 
 class Settings2():
