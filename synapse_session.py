@@ -1,6 +1,7 @@
 from usr import Settings2
 from typing import List
 import datetime
+import globus_sdk
 
 
 class obj():
@@ -24,6 +25,11 @@ class obj():
         self.last_used = datetime.datetime.now()
         self.usr_settings_path = user_settings_path
         self.settings = Settings2('')
+        self.tc: globus_sdk.TransferClient = None
+        self.ping_globus_next: datetime.datetime = datetime.datetime.min
+
+    def globus_client(self) -> globus_sdk.TransferClient:
+        return self.tc
 
     @property
     def globus_id(self) -> str:

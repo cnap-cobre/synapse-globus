@@ -68,7 +68,8 @@ def execute():
         print(str(res))
 
         # Post status update.
-        update: usr.JobUpdate = usr.JobUpdate.fromGlobusTaskObj(j, res)
+        update: usr.JobUpdate = usr.JobUpdate.fromGlobusTaskObj(
+            j.globus_id, j.job_id, len(j.files), 1, res)
         post_status_update(conf['SYNAPSE_SERVER'], update)
 
         if res['status'] == 'SUCCEEDED':
@@ -120,7 +121,7 @@ def import_files(j: xferjob.Job, conf: Dict[str, str], apikey: str):
     for fd in j.files:
         if fd.status_code == xferjob.FileStatus.IMPORTED:
             cnt_done += 1
-    status.percent_done = int((cnt_done / len(j.files)) * 100)
+    status.percent_done = usr.calcProgress(2, cnt_done / len(j.files))
     post_status_update(conf['SYNAPSE_SERVER'], status)
     jobstarttime = datetime.datetime.now()
     for fd in j.files:
@@ -167,6 +168,7 @@ def import_files(j: xferjob.Job, conf: Dict[str, str], apikey: str):
 
 
 def post_status_update(server_uri: str, status: usr.JobUpdate):
+    log.info(status.job_id + ' '+str(status.percent_done)+' '+status.status_msg)
     data: str = jsonpickle.encode(status)
     url = '%s/updateFromDV' % (server_uri)
     r = requests.post(url, data)

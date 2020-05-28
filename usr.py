@@ -22,12 +22,13 @@ class JobHistory():
         self.total_bytes: int = 0
         self.files_xferred: int = 0
         self.total_files: int = 0
-        self.percent_done: int = 0
-        self.status_msg: str = ''
-        self.error: bool = False
+        # self.percent_done: int = 0
+        # self.status_msg: str = ''
+        # self.error: bool = False
         # src/dest_type: 0=Generic Globus Endpoint, 1=Dataverse, 2=Beocat
-        self.src_type: int = 0
-        self.dest_type: int = 1
+        self.src_type: xferjob.EndPointType = xferjob.EndPointType.GLOBUS_EP
+        self.dest_type: xferjob.EndPointType = xferjob.EndPointType.DATAVERSE
+        self.globus_task_id: str = ''
         self.last_update: JobUpdate = JobUpdate(globus_id)
 
 
@@ -41,18 +42,46 @@ class JobUpdate():
         self.percent_done: int = percent_done
         self.status_msg: str = msg
         self.error: bool = False
+        self.warning: bool = False
+        self.step: int = 0
+        self.finished_globus: bool = False
 
     @staticmethod
-    def fromGlobusTaskObj(j: xferjob.Job, res: Dict) -> JobUpdate:
+    # Step: 0 = Init & placed on queue. 1, 2
+    def fromGlobusTaskObj(globus_id: str, job_id: str, total_files: int, step: int, res: Dict) -> JobUpdate:
         xfered: int = res['data']['files_transferred']
         skipped: int = res['data']['files_skipped']
         bps: int = res['data']['effective_bytes_per_second']
         mbps: float = float(bps / 1024 / 1024)
         cntdone: int = xfered+skipped
-        prog: int = calcProgress(1, cntdone/len(j.files))
-        msg: str = 'Moving via Globus. '+str(xfered)+' copied, '+str(skipped) + \
-            " skipped "+str(round(mbps, 2))+' MB/sec'
-        update = JobUpdate(j.globus_id, j.job_id, prog, msg)
+        if total_files == 0:
+            total_files = 1
+        prog: int = calcProgress(step, cntdone/total_files)
+
+        update: JobUpdate = JobUpdate(globus_id, job_id, prog)
+        update.step = step
+
+        update.status_msg = 'Step '+str(step+1)+' of 3: '
+
+        if res['data']['status'] == 'SUCCEEDED':
+            if step == 2:
+                dt = datetime.datetime.fromisoformat(
+                    res['data']['completion_time']).astimezone()
+                update.status_msg = 'Transfer completed '+str(dt)+'. '
+            else:
+                update.status_msg += 'Globus Transfer Complete. '
+            update.finished_globus = True
+        elif res['data']['status'] == 'ACTIVE':
+            update.status_msg += 'Transferring via Globus. '
+        elif res['data']['status'] == 'INACTIVE':
+            update.status_msg += 'Need to refresh Globus credentials. '
+            update.warning = True
+        elif res['data']['status'] == 'FAILED':
+            update.status_msg += 'Globus Transfer Failed. See Logs. '
+            update.error = True
+        update.status_msg += str(xfered)+' copied, '+str(skipped) + \
+            " skipped "+str(round(mbps, 3))+' MB/sec'
+
         return update
 
 

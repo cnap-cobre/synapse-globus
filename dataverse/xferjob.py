@@ -8,11 +8,17 @@ import uuid
 from pathlib import Path
 from typing import List
 from typing import Dict
-import enum
+from enum import IntEnum
 import jsonpickle
 
 
-class FileStatus(enum.Enum):
+class EndPointType(IntEnum):
+    GLOBUS_EP = 0
+    DATAVERSE = 1
+    HPC = 2
+
+
+class FileStatus(IntEnum):
     # File has been transferred to the dataverse server
     # and is awaiting import.
     PENDING_IMPORT = 100
@@ -30,7 +36,7 @@ class FileStatus(enum.Enum):
     #     return self.value == other.value
 
 
-class JobStatus(enum.Enum):
+class JobStatus(IntEnum):
     PENDING_XFER = 100
     TRANSFERING = 200
     PENDING_IMPORT = 300
@@ -72,7 +78,7 @@ class FileData:
         self.selected_globus_path: str = ''
         self.time_imported: datetime.datetime = datetime.datetime.min
         self.status_code: FileStatus = FileStatus.PENDING_IMPORT
-        self.status_details:str = ''
+        self.status_details: str = ''
 
     def toJSON(self):
         # formatted = self.toDict()

@@ -460,10 +460,15 @@ def svr_transfer_status(credspath: str, task_id: str):
     return usr_transfer_status(tc, task_id)
 
 
-def usr_transfer_status(tc: globus_sdk.TransferClient, task_id: str):
-    res = tc.endpoint_manager_get_task(task_id)
-    # https://docs.globus.org/api/transfer/task/#task_document
+def tasks_available(tc: globus_sdk.TransferClient, task_id: str):
+    # res = tc.endpoint_manager_task_list(num_results=100,filter='type:TRANSFER')
+    for task in tc.task_list():
+        if task["task_id"] == task_id:
+            res2 = tc.get_task(task_id)
+            return _parse_transfer_status(res2)
 
+
+def _parse_transfer_status(res):
     msg: str = ''
     if res.data['status'] == 'FAILED':
         msg = 'The task or one of its subtasks failed, expired, or was canceled.'
@@ -477,6 +482,12 @@ def usr_transfer_status(tc: globus_sdk.TransferClient, task_id: str):
         msg = 'UNKNOWN STATUS'
     endresult = {'status': res.data['status'], 'data': res.data, 'msg': msg}
     return endresult
+
+
+def usr_transfer_status(tc: globus_sdk.TransferClient, task_id: str):
+    res = tc.endpoint_manager_get_task(task_id)
+    # https://docs.globus.org/api/transfer/task/#task_document
+    return _parse_transfer_status(res)
 
 
 def get_events(tc: globus_sdk.TransferClient, task_id: str):

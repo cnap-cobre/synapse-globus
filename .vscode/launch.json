@@ -5,10 +5,11 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Python: Current File",
+      "name": "DVChronJob",
       "type": "python",
       "request": "launch",
-      "program": "${file}",
+      // "program": "${file}",
+      "program": "${workspaceFolder}/DVChronJob.py",
       "console": "integratedTerminal"
     },
 
@@ -41,15 +42,11 @@
     },
     {
       "name": "Flask/ChronJob",
-      "configurations": ["Python: Flask", "Python: Current File"]
+      "configurations": ["Python: Flask", "DVChronJob"]
     },
     {
       "name": "All",
-      "configurations": [
-        "Python: Flask",
-        "Launch Chrome",
-        "Python: Current File"
-      ]
+      "configurations": ["Python: Flask", "Launch Chrome", "DVChronJob"]
     }
   ]
 }

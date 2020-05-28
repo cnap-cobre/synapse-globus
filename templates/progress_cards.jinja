@@ -7,18 +7,20 @@
 -->
 
 {% macro endpoint_icon(type) %}
-    {% if type == 1 %}
+    {% if type|int == 1 %}
       icon-dataverse_icon
-    {% elif type == 2 %}
+    {% elif type|int == 2 %}
       fa fa-server
     {% else %}
       icon-globus_icon
     {% endif %}
 {% endmacro %}
 
-{% macro progress_type(percent_done, is_err) %}
+{% macro progress_type(percent_done, is_err, is_warning) %}
   {% if is_err %}
     progress-bar bg-danger
+  {% elif is_warning %}
+    progress-bar bg-warning
   {% elif percent_done == 100 %}
     progress-bar bg-success
   {% else %}
@@ -37,21 +39,21 @@
       <div class="card-body">
         <div class="row no-gutters" style="line-height: 1 !important;">
           <div class="col" style="text-align: center; font-size: small;">
-            <h5><i class="%%endpoint_icon(rec['src_type'])%%"></i></h5>
+            <h5><i class="%%endpoint_icon(rec.src_type)%%"></i></h5>
             <div class="mb-1">%%rec['src_name']%%</div>
           </div>
           <div class="col-auto">
             <h5><i class="fa fa-arrow-right"></i></h5>
           </div>
           <div class="col" style="text-align: center; font-size: small;">
-            <h5><i class=" %%endpoint_icon(rec['dest_type'])%%"></i></h5>
+            <h5><i class=" %%endpoint_icon(rec.dest_type)%%"></i></h5>
             <div class="mb-1">%%rec['dest_name']%%</div>
           </div>
         </div>
 
         <div class="progress progress-bar-sm">
           <div
-            class="%%progress_type(rec.last_update.percent_done,rec['error'])%%"
+            class="%%progress_type(rec.last_update.percent_done,rec['error'],rec['warning'])%%"
             role="progressbar"
             style="width: %%rec.last_update.percent_done%%%;"
             aria-valuenow="70"

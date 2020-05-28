@@ -1,6 +1,7 @@
 from flask import Flask, url_for, session, redirect, request, render_template, Response, stream_with_context
 from flask.logging import default_handler
-import datetime
+from datetime import datetime
+from datetime import timedelta
 import re
 import os
 import globus_sdk
@@ -92,7 +93,7 @@ def get_session() -> synapse_session.obj:
     # First let's house clean any old sessions.
     s: synapse_session.obj
     for s in list(app.sessions_by_session_id.values()):
-        diff: datetime.timedelta = datetime.datetime.now() - s.last_used
+        diff: timedelta = datetime.now() - s.last_used
         if diff.days > 1 and s.session_id != session_id:
             print("Removing session obj "+s.session_id+"," +
                   s.globus_id+" because it's "+str(diff)+" old.")
@@ -103,7 +104,7 @@ def get_session() -> synapse_session.obj:
         s = app.sessions_by_session_id[session_id]
         if len(s.globus_id) < 4 and 'globus_id' in session:
             s.set_globus_id(session['globus_id'])
-        s.last_used = datetime.datetime.now()
+        s.last_used = datetime.now()
         return s
 
     s = synapse_session.obj(session_id, app.config['USER_SETTINGS_PATH'])
@@ -216,7 +217,10 @@ def globus_login():
             # email=info["email"]
         )
 
-        return redirect(url_for('index'))
+        if 'landing' in request.args:
+            return redirect(request.args.get('landing'))
+        else:
+            return redirect(url_for('index'))
 
 
 @app.route('/globus_logout')
@@ -245,7 +249,7 @@ def logout():
     # there is no tool to help build this (yet!)
     globus_logout_url = (
         'https://auth.globus.org/v2/web/logout' +
-        '?client={}'.format(app.config['APP_CLIENT_ID']) +
+        '?client={}'.format(app.config['GLOBUS_WEB_APP_CLIENT_ID']) +
         '&redirect_uri={}'.format(redirect_uri) +
         '&redirect_name=Globus Example App')
 
@@ -329,6 +333,40 @@ def updateDVKey():
 
 # def save_usr_settings(us: usr.settings2):
 #     us.save(app.config['USER_SETTINGS_PATH'])
+
+# This client accomplishes two things: Keep the client session alive
+# by the client pinging this route. and 2) looks up all active globus
+# tasks, and queries globus for updates. This method has a built-in
+# delimiter to pevent the javascript client to hammer the server.
+# default iterate time is 5 sec.
+@app.route('/pingglobus')
+def globusProgress():
+    s: datetime = datetime.now()
+    sess: synapse_session.obj = get_session()
+    if sess.ping_globus_next > datetime.now():
+        return
+    sess.ping_globus_next = datetime.now() + timedelta(seconds=4)
+    if sess.tc is None:
+        sess.tc = getGlobusObj()
+    us: usr.settings2 = sess.settings
+    jh: usr.JobHistory
+    for jh in us.job_history.values():
+        if jh.last_update.percent_done < 100 and not jh.last_update.finished_globus:
+            task_status = globus.tasks_available(sess.tc, jh.globus_task_id)
+            # task_status = globus.usr_transfer_status(sess.tc, jh.globus_task_id)
+            step: int = 0
+            if jh.src_type == xferjob.EndPointType.DATAVERSE:
+                step = 2
+            elif jh.dest_type == xferjob.EndPointType.DATAVERSE:
+                step = 1
+
+            jh.last_update = usr.JobUpdate.fromGlobusTaskObj(
+                jh.globus_id, jh.job_id, jh.total_files, step, task_status)
+            sess.save_settings()
+        update_progress(jh.last_update)
+    e: datetime = datetime.now()
+    print("Sec to ping globus: "+str((e - s).total_seconds()))
+    return ''
 
 
 @app.route('/setdvkey')
@@ -422,6 +460,7 @@ def uploadPOST():
     if 'TransferResponse' in str(type(task_id)):
         if task_id['code'] == 'Accepted':
             job.globus_task_id = task_id['task_id']
+
         else:
             return "Could not successfully submit task: "+str(task_id)
     elif 'Response' in str(type(task_id)):
@@ -437,11 +476,12 @@ def uploadPOST():
     jh.job_id = job.job_id
     jh.src_name = request.form['src_endpoint_name']
     jh.dest_name = 'DV.'+request.form['dataset_name']
-    jh.time_started = datetime.datetime.now()
+    jh.time_started = datetime.now()
     jh.status_msg = 'Job sent to globus'
     jh.percent_done = 5
     jh.src_type = 0
     jh.dest_type = 1
+    jh.globus_task_id = job.globus_task_id
 
     sess.settings.job_history[job.job_id] = jh
     sess.save_settings()
@@ -483,6 +523,7 @@ def uploadPOST():
     #     # upload.files(app.config['BASE_DV_URL'],session[usr.settings.DV_KEY],job,Path('c:/temp/dvdata'))
     #     print("Upload finished!")
     print('Redirecting to get!!!!')
+    time.sleep(5)
     return redirect(url_for('uploadGET'))
 
 # TODO: Also limit by Dataverse IP address(es)?
@@ -572,7 +613,8 @@ def toBeocat():
     elif 'dataSetId' in request.args:
         session['TO_BEOCAT_DV_DATASET_ID'] = int(request.args['dataSetId'])
 
-    destEndpoint = app.config['BEOCAT_GLOBUS_ENDPOINT_ID']
+    hpc_ep = app.config['BEOCAT_GLOBUS_ENDPOINT_ID']
+    src_path = app.config['OUTGOING_XFER_PATH']
 
    # Get a list of available globus endpoints.
     tc = getGlobusObj()
@@ -581,40 +623,58 @@ def toBeocat():
     endpoints = globusDo(globus.available_endpoints, tc)
     if 'Response' in str(type(endpoints)):
         return endpoints
-    elif 'logged in' in str(endpoints):
-        return redirect('/tobeocat')
+    # elif 'logged in' in str(endpoints):
+    #     return redirect('/tobeocat')
 
-    if endpoints[destEndpoint]['activated'] == False:
+    if hpc_ep not in endpoints or endpoints[hpc_ep]['activated'] == False:
         # Endpoint isn't activated. Re-direct.
-        return redirect('https://app.globus.org/file-manager?destination_id='+destEndpoint+'&origin_id='+app.config['MUSTER_GLOBUS_ENDPOINT_ID']+'&origin_path=%2F~%2F'+destEndpoint)
+        return redirect('https://app.globus.org/file-manager?destination_id='+hpc_ep+'&origin_id='+app.config['MUSTER_GLOBUS_ENDPOINT_ID']+'&origin_path=%2F~%2F'+hpc_ep)
     # Now that we have a valid Globus ID, let's load MRU settings if existant.
-    us: usr.settings2 = get_session().settings
+    sess: synapse_session.obj = get_session()
+    us: usr.settings2 = sess.settings
+    # Create a JobHistory object.
+    j: usr.JobHistory = usr.JobHistory(us.globus_id)
+    j.job_id = str(uuid.uuid4())
+    j.src_name = 'DV'
+    j.dest_name = 'Beocat'
+    j.time_started = datetime.now()
+    j.src_type = xferjob.EndPointType.DATAVERSE
+    j.dest_type = xferjob.EndPointType.HPC
+    j.last_update.status_msg = 'Marshaling files from Dataverse...'
 
     # OK, now let's pull the data via the dataverse API, and put it on Globus.
     files = []
     files.append(session['TO_BEOCAT_DV_FILE_ID'])
-    zipPath = Path(app.config['PENDING_PATH']) / 'PENDING.zip'
+    zipPath = Path(src_path) / 'PENDING.zip'
 
     msg = 'Not yet ran.'
 
     try:
         download.files(app.config['BASE_DV_URL'], us.dv_key, files, zipPath)
         with zipfile.ZipFile(zipPath, 'r') as zip_ref:
-            zip_ref.extractall(Path(app.config['PENDING_PATH']))
+            zip_ref.extractall(Path(src_path))
         os.remove(zipPath)
+        filelist = next(os.walk(src_path))[2]
+        j.total_files = len(filelist)
     except BaseException as be:
         msg = 'Error Staging Files to Beocat: ' + str(be)
         print(msg)
 
+    us.job_history[j.job_id] = j
+    sess.save_settings()
+
     try:
         xfer_result = globus.transfer(
-            tc, app.config['MUSTER_GLOBUS_ENDPOINT_ID'], destEndpoint, app.config['PENDING_PATH'], 'FromDataverse')
+            tc, app.config['MUSTER_GLOBUS_ENDPOINT_ID'], hpc_ep, src_path, 'FromDataverse')
+        j.globus_task_id = xfer_result['task_id']
+        sess.save_settings()
     except globus_sdk.exc.TransferAPIError as te:
         if '409' in str(te):  # Expired Credentials for the endpoint. Need to re-activate
-            return redirect('https://app.globus.org/file-manager?destination_id='+destEndpoint+'&origin_id='+app.config['MUSTER_GLOBUS_ENDPOINT_ID']+'&origin_path=%2F~%2F'+destEndpoint)
+            return redirect('https://app.globus.org/file-manager?destination_id='+hpc_ep+'&origin_id='+app.config['MUSTER_GLOBUS_ENDPOINT_ID']+'&origin_path=%2F~%2F'+hpc_ep)
     print(xfer_result)
     msg = str(xfer_result)
-    return render_template('toBeocat.html', endpoints=endpoints, mruEndpointID=destEndpoint, guser=session[usr.settings.GLOBUS_USER], dvkey=session[usr.settings.DV_KEY], status_msg=msg)
+    return redirect(url_for('uploadGET'))
+    # return render_template('toBeocat.html', endpoints=endpoints, mruEndpointID=hpc_ep, guser=session[usr.settings.GLOBUS_USER], dvkey=session[usr.settings.DV_KEY], status_msg=msg)
 
 
 # #More secure would be requestor to provide a filename + mru + filesize,
@@ -646,7 +706,7 @@ def get_message(sess: synapse_session.obj):
     return s
     # s: synapse_session.obj = get_session()
     # jh: usr.JobHistory = usr.JobHistory()
-    # jh.percent_done = datetime.datetime.now().second
+    # jh.percent_done = datetime.now().second
     # jh.src_name = 'DeepDell'
     # jh.dest_name = 'DV.Christmas Elf Heights'
     # jh.job_id =
@@ -674,7 +734,7 @@ def stream():
 def update_progress(update: usr.JobUpdate) -> bool:
     saved: bool = False
     # Save the history to the store.
-    print("inside update_progress")
+    # print("inside update_progress")
     if len(update.globus_id) < 5:
         raise Exception(
             'JobID not set in update parameter. Cannot load existing user object.')

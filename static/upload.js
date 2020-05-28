@@ -41,6 +41,19 @@ eventSource.onmessage = function(e) {
   }
 };
 
+$(document).ready(function() {
+  setHeartbeat();
+});
+function setHeartbeat() {
+  setTimeout("heartbeat()", 5000);
+}
+function heartbeat() {
+  $.get("/pingglobus", { param1: "p1" }, function(data) {
+    console.log(data);
+    setHeartbeat();
+  });
+}
+
 // Drop handler function to get all files
 async function getAllFileEntries(dataTransferItemList) {
   //console.debug("inside get all files.");
