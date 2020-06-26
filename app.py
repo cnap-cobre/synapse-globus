@@ -362,8 +362,15 @@ def globusProgress():
 
             jh.last_update = usr.JobUpdate.fromGlobusTaskObj(
                 jh.globus_id, jh.job_id, jh.total_files, step, task_status)
-            sess.save_settings()
-        update_progress(jh.last_update)
+
+            if step == 1:
+                if jh.last_update.percent_done < 55:
+                    sess.save_settings()
+                    update_progress(jh.last_update)
+            else:
+                sess.save_settings()
+                update_progress(jh.last_update)
+
     e: datetime = datetime.now()
     print("Sec to ping globus: "+str((e - s).total_seconds()))
     return ''
@@ -482,6 +489,7 @@ def uploadPOST():
     jh.src_type = 0
     jh.dest_type = 1
     jh.globus_task_id = job.globus_task_id
+    jh.total_files = len(job.files)
 
     sess.settings.job_history[job.job_id] = jh
     sess.save_settings()

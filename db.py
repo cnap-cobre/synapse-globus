@@ -33,7 +33,7 @@ class DB:
         self.ssh_usr = d['SSH_USER']
         self.ssh_pass = d['SSH_PASS']
 
-    def execute(self, method):
+    def execute(self, method, **kwargs):
         try:
             conn = None
             result = None
@@ -46,7 +46,7 @@ class DB:
                         local_bind_address=(self.svr, self.db_port)) as sshserver:
                     conn = psycopg2.connect(
                         host=self.svr, database=self.dbname, user=self.usr, password=self.passcode)
-                    result = method(conn)
+                    result = method(conn, **kwargs)
                     sshserver.stop()
                 return result
             else:
@@ -59,7 +59,7 @@ class DB:
             if conn is not None:
                 conn.close()
 
-    def get_dv_api_keys(self, conn):
+    def get_dv_api_keys(self, conn, **kwargs):
         result = []
         cur = conn.cursor()
         cur.execute("SELECT tokenstring FROM apitoken")
@@ -69,3 +69,29 @@ class DB:
             result.append(row[0])
         cur.close()
         return result
+
+    def get_bytes_of_dataset(self, conn, **kwargs):
+        cur = conn.cursor()
+
+        qry: str = """ select sum(filesize) as sum_size
+                      from(
+                        select filesize
+                        from datafile
+                        join dvobject on dvobject.id = datafile.id
+                        join dataset on dataset.id = dvobject.owner_id
+                        where dataset.id = %s
+                      ) as sumsubquery;"""
+
+        cur.execute(qry, [kwargs['dataset_id']])
+        rows = cur.fetchall()
+        return rows[0][0]
+
+    def get_downloads_of_dataset(self, conn, **kwargs):
+        cur = conn.cursor()
+
+        qry: str = """ select *
+                        from guestbookresponse order by responsetime;"""
+
+        cur.execute(qry, [kwargs['dataset_id']])
+        rows = cur.fetchall()
+        return row[0]

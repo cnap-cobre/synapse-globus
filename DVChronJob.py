@@ -4,6 +4,7 @@ from pathlib import Path
 import datetime
 from dataverse import xferjob
 from dataverse import upload
+from dataverse import dataset
 from typing import List
 from typing import Dict
 import globus
@@ -55,6 +56,28 @@ def execute():
 
     # Check to see if any jobs are done transferring.
     store: db.DB = db.DB(creds_path)
+
+    # temp
+
+    dataset_id = 17
+    dvsvr: str = "https://elete.hosted.beocat.ksu.edu"
+
+    # dvs = dataset.getList(dvsvr,"76585908-601d-4f95-9257-75a96eab9dad")
+
+    stats: Dict = dataset.getDatasetInfo(dvsvr, dataset_id, store)
+
+    # stats: Dict = dataset.getStats(dvsvr, dataset_id)
+    # stats['total_bytes'] = store.execute(
+    #     store.get_bytes_of_dataset, dataset_id=dataset_id)
+    # stats['title'] = ''
+    # stats['doi'] = ''
+    # stats['id'] = dataset_id
+    # stats['url'] = dvsvr+'/dataset.xhtml?id='+dataset_id
+    # stats['doiurl'] =
+    temp_output: str = json.dumps(stats, indent=4, sort_keys=True, default=str)
+    with open("c:/temp/exampleStats.json", 'w') as f:
+        f.write(temp_output)
+
     api_keys: List[str] = []
     j: xferjob.Job
 
@@ -76,7 +99,7 @@ def execute():
             # We need to import. If we don't already have a
             # api key list. Let's grab it from the db.
             if len(api_keys) == 0:
-                api_keys = store.execute(store.get_dv_api_keys)
+                api_keys = store.execute(store.get_dv_api_keys, {})
             # Import into dataverse.
             print(api_keys)
             apikey: str = lookup_api_key(api_keys, j.dv_user_id)
@@ -114,6 +137,7 @@ def execute():
 def import_files(j: xferjob.Job, conf: Dict[str, str], apikey: str):
     status: usr.JobUpdate = usr.JobUpdate(
         j.globus_id, j.job_id, 55, 'Importing into Dataverse...')
+    status.finished_globus = True
     cnt_done: int = 0
     errs: List[str] = []
     # We might be resuming after an interruption. Let's check.

@@ -54,9 +54,9 @@ class JobUpdate():
         bps: int = res['data']['effective_bytes_per_second']
         mbps: float = float(bps / 1024 / 1024)
         cntdone: int = xfered+skipped
-        if total_files == 0:
-            total_files = 1
-        prog: int = calcProgress(step, cntdone/total_files)
+        prog: int = 5
+        if total_files > 0:
+            prog = calcProgress(step, cntdone/total_files)
 
         update: JobUpdate = JobUpdate(globus_id, job_id, prog)
         update.step = step
