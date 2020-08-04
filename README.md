@@ -1,7 +1,9 @@
 <!--In production at [https://synapse.ksu.edu/](https://synapse.ksu.edu)-->
-
+<br>
 <div align="center">
   <img src="https://raw.githubusercontent.com/cnap-cobre/synapse/master/logo.png" alt="Synapse Logo" width="450">
+  <br>
+  Dataverse IO via Globus
 </div>
 
 <!--
@@ -15,19 +17,11 @@
 [![Maintainability](https://api.codeclimate.com/v1/badges/51341d034ff8d6c600c6/maintainability)](https://codeclimate.com/github/cnap-cobre/synapse/maintainability)
 -->
 
-Dataverse IO via Globus
+
 
 Synapse is a browser-based (Flask) interface for transferring data between a [Dataverse](https://dataverse.org/) installation utilizing [Globus](https://www.globus.org/).
 This is currently accomplished by transferring the data into a staging area "on" the Dataverse server, then use API calls for actually importing them in.
 In the future we plan on taking very large files and only importing in a placeholder. Getting that handle, we will replace the file that the import created, with the actual file, then update the DB with the new filesize.
-
-- Integrated with [Agave](https://agaveapi.co/),
-[Globus](https://www.globus.org/), [Dropbox](https://www.dropbox.com/), [Google Drive](https://www.google.com/drive/)
-- Built with open source technologies
-- Launch compute jobs on your own cluster (Slurm, SGE, Torque, Condor, ...anything supported by Agave)
-- Manage files on your own filesystem (SFTP, IRODS, GridFTP, AmazonS3, Dropbox)
-- Share data with collaborators
-- Publish datasets for reproducible research
 
 ## Documentation
 
