@@ -7,7 +7,7 @@
   <br><br>
   Dataverse IO via Globus
 </div>
-<br><br>
+
 <!--
 [![Build Status](https://travis-ci.org/cnap-cobre/synapse.svg?branch=master)](https://travis-ci.org/cnap-cobre/synapse)
 [![Greenkeeper badge](https://badges.greenkeeper.io/cnap-cobre/synapse.svg)](https://greenkeeper.io/)
