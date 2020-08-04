@@ -6,6 +6,7 @@
   <img src="https://raw.githubusercontent.com/cnap-cobre/synapse/master/logo.png" alt="Synapse Logo" width="450">
   <br><br>
   Dataverse IO via Globus
+  <br><br>
 </div>
 
 <!--
