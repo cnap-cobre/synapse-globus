@@ -1,11 +1,13 @@
-<!--In production at [https://synapse.ksu.edu/](https://synapse.ksu.edu)-->
+<!--In production at [https://synapse.ksu.edu/](https://synapse.ksu.edu)
 <br>
+-->
+
 <div align="center">
   <img src="https://raw.githubusercontent.com/cnap-cobre/synapse/master/logo.png" alt="Synapse Logo" width="450">
-  <br>
+  <br><br>
   Dataverse IO via Globus
 </div>
-
+<br><br>
 <!--
 [![Build Status](https://travis-ci.org/cnap-cobre/synapse.svg?branch=master)](https://travis-ci.org/cnap-cobre/synapse)
 [![Greenkeeper badge](https://badges.greenkeeper.io/cnap-cobre/synapse.svg)](https://greenkeeper.io/)
