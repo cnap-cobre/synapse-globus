@@ -78,7 +78,9 @@ class FileData:
         self.selected_globus_path: str = ''
         self.time_imported: datetime.datetime = datetime.datetime.min
         self.status_code: FileStatus = FileStatus.PENDING_IMPORT
+        self.import_result: Dict[str, str] = {}
         self.status_details: str = ''
+        self.import_duration: datetime.timedelta
 
     def toJSON(self):
         # formatted = self.toDict()

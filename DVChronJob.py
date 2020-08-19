@@ -141,7 +141,7 @@ def import_files(j: xferjob.Job, conf: Dict[str, str], apikey: str):
     cnt_done: int = 0
     errs: List[str] = []
     # We might be resuming after an interruption. Let's check.
-    fd: xferjob.fileData = None
+    fd: xferjob.FileData
     for fd in j.files:
         if fd.status_code == xferjob.FileStatus.IMPORTED:
             cnt_done += 1
@@ -176,7 +176,7 @@ def import_files(j: xferjob.Job, conf: Dict[str, str], apikey: str):
             log.warning("Error Importing file: "+fd.import_result['message'])
             status.error = True
             status.status_msg = "Error Importing " + \
-                fd.name+": "+fd.import_result['message']
+                fd.path+": "+fd.import_result['message']
         j.todisk(conf['ACTIVE_MANIFEST_DIR'])
         cnt_done += 1
         status.percent_done = usr.calcProgress(2, cnt_done / len(j.files))
@@ -223,7 +223,7 @@ def clean_up_xfer():
     pass
 
 
-def download_manifest(server_uri: str, job_id: str, active_manifest_dir: str) -> xferjob.Job:
+def download_manifest(server_uri: str, job_id: str, active_manifest_dir: str):
     url = '%s/pending' % (server_uri)
     url = url + '?jid='+job_id
     data: str = ''
