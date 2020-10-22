@@ -1,5 +1,5 @@
-{% extends 'base.html' %}
-{% block container %}
+{% include 'base2.jinja' %}
+{% include 'progress_cards.jinja' %}
 
       <div>
         Current Globus ID: %%guser%% <a href="globus_logout">Change</a>
@@ -11,9 +11,7 @@
         <input id="dvkey" type="text" style="width: 250px;" name="dvkey" value="%%dvkey%%"> <a href="">How?</a>
       </div>
       <input type="button" onclick="submitKey()" value="Update"/>
-   </body>
-</html>
-
+   
 <script>
 function submitKey()
 {
@@ -25,4 +23,4 @@ function submitKey()
       });
 }
 </script>
-{% endblock %}
+{% include 'footer.jinja' %}

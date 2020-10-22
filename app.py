@@ -382,7 +382,7 @@ def setDVKey():
     if 'msg' in request.args:
         msg = str(request.args.get('msg')).replace("_", " ")
     us: usr.settings2 = get_session().settings
-    return render_template('setdvkey.html', guser=us.globus_usr, dvkey=us.dv_key_masked, status_msg=msg)
+    return render_template('setdvkey.jinja', guser=us.globus_usr, dvkey=us.dv_key_masked, status_msg=msg)
 
 
 @app.route("/upload", methods=['POST'])
@@ -445,7 +445,7 @@ def uploadPOST():
     job.todisk(app.config['PENDING_PATH'])
 
     # OK, we should have a globus path attached to our files.
-    # Set's setup the transfer.
+    # Sets setup the transfer.
     job.dest_endpoint = globus.setupXfer(app.config['SENSITIVE_INFO'], job.globus_usr_name,
                                          job.globus_id, app.config['DATAVERSE_GLOBUS_ENDPOINT_ID'], job.job_id)
 
