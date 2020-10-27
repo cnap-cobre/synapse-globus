@@ -6,7 +6,7 @@ cffi==1.13.2
 chardet==3.0.4
 Click==7.0
 colorama==0.4.1
-cryptography==2.8
+cryptography==3.2
 Flask==1.1.1
 globus-sdk==1.8.0
 idna==2.8
