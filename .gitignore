@@ -1,4 +1,4 @@
-app.conf
+app.conf_*
 node_modules
 *.log
 

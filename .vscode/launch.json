@@ -29,6 +29,7 @@
       "env": {
         "FLASK_APP": "app.py",
         "FLASK_ENV": "development",
+        "CONFIG_FILE": "app.conf_GERRICK_DEV",
         "FLASK_DEBUG": "1"
       },
       "args": ["run", "--no-debugger", "--no-reload"],

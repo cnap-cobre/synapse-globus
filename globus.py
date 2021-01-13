@@ -162,15 +162,15 @@ def does_share_exist(tc: globus_sdk.TransferClient, globus_usr: str):
     return os.path.exists(globus_usr)
 
 
-def setupXfer(credspath: str, globus_usr: str, globus_usr_id: str, dv_endpoint_id: str, dirName: str):
+def setupXfer(vals: dict, globus_usr: str, globus_usr_id: str, dv_endpoint_id: str, dirName: str):
     log = []
-    fr = open(credspath, 'r')
-    vals = json.loads(fr.read())
+    # fr = open(credspath, 'r')
+    # vals = json.loads(fr.read())
     synapseUser = vals['DATAVERSE_GLOBUS_LOCAL_USER']
     synapsePass = vals['DATAVERSE_GLOBUS_LOCAL_PASSWORD']
     native_client_id = vals['GLOBUS_NATIVE_APP_CLIENT_ID']
     refresh_token = vals['GLOBUS_NATIVE_APP_REFRESH_TOKEN']
-    fr.close()
+    # fr.close()
 
     tc = getNativeTransferClient(native_client_id, refresh_token)
     activateEndpoint(tc, dv_endpoint_id, synapseUser, synapsePass)

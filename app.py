@@ -24,6 +24,8 @@ from typing import Dict
 import synapse_session
 import logging
 from logging.handlers import RotatingFileHandler
+import sys
+import getopt
 # import redis
 
 # Setup logging
@@ -57,10 +59,20 @@ app = CustomFlask(__name__)
 app.logger.setLevel(logging.DEBUG)
 app.logger.addHandler(my_handler)
 app.logger.removeHandler(default_handler)
-app.logger.info('Hello!')
+app.logger.info('Logger intitialized!')
 app._static_folder = 'static'
 app._static_url_path = ''
 app.config.from_pyfile('app.conf')
+app.logger.info('Environment variable for config: '+os.environ['CONFIG_FILE'])
+app.config.from_envvar('CONFIG_FILE')
+try:
+    opts, args = getopt.getopt(sys.argv, "c:")
+except getopt.GetoptError as goe:
+    print(goe)
+for opt, arg in opts:
+    if opt in ('-c', '-C'):
+        app.logger.info('using config from cmd line arg: '+arg)
+        app.config.from_pyfile(arg)
 
 INITIALIZED = 'INITIALIZED'
 
@@ -387,6 +399,7 @@ def setDVKey():
 
 @app.route("/upload", methods=['POST'])
 def uploadPOST():
+    app.logger.debug('Handling Post.')
     sess: synapse_session.obj = get_session()
 
     session['percent_done'] = 1
@@ -397,7 +410,7 @@ def uploadPOST():
 
     # save MRU settings
     sess.save_settings()
-
+    app.logger.debug(sess)
     # 4/8/2020: Pull up our manifest file we started populating after the drag'n'drop
     # event in order to map the relative browser path of the files with the Globus
     # abs path.
@@ -446,7 +459,7 @@ def uploadPOST():
 
     # OK, we should have a globus path attached to our files.
     # Sets setup the transfer.
-    job.dest_endpoint = globus.setupXfer(app.config['SENSITIVE_INFO'], job.globus_usr_name,
+    job.dest_endpoint = globus.setupXfer(app.config, job.globus_usr_name,
                                          job.globus_id, app.config['DATAVERSE_GLOBUS_ENDPOINT_ID'], job.job_id)
 
     job.todisk(app.config['PENDING_PATH'])
@@ -454,6 +467,8 @@ def uploadPOST():
     # Let's kickoff the transfer.
     tc = getGlobusObj()
     if 'Response' in str(type(tc)):
+        app.logger.debug(
+            'Do not have a valid globus object. Returning...: '+str(tc))
         return tc
     try:
         task_id = globus.transferjob(
@@ -462,13 +477,18 @@ def uploadPOST():
     except Exception as e:
         find_result = str(e)
         if 'AuthenticationFailed' in str(e):
+            app.logger.debug('Globus Auth Failed. Redirecting...')
             return redirect('/upload')
 
     if 'TransferResponse' in str(type(task_id)):
         if task_id['code'] == 'Accepted':
             job.globus_task_id = task_id['task_id']
+            app.logger.debug('Successfully received Globus taskid ' +
+                             job.globus_task_id+' for job '+job.job_id+' ('+job.globus_usr_name+')')
 
         else:
+            app.logger.debug(
+                'Globus transfer not successfully submitted: '+str(task_id))
             return "Could not successfully submit task: "+str(task_id)
     elif 'Response' in str(type(task_id)):
         return task_id
@@ -621,7 +641,7 @@ def toBeocat():
     elif 'dataSetId' in request.args:
         session['TO_BEOCAT_DV_DATASET_ID'] = int(request.args['dataSetId'])
 
-    hpc_ep = app.config['BEOCAT_GLOBUS_ENDPOINT_ID']
+    hpc_ep = app.config['GLOBUS_HPC_ENDPOINT']
     src_path = app.config['OUTGOING_XFER_PATH']
 
    # Get a list of available globus endpoints.
@@ -859,9 +879,9 @@ def link():
 
 
 def load_app_client():
-    with open(app.config['SENSITIVE_INFO'], 'r') as fr:
-        vals = json.loads(fr.read())
-    app.config['PENDING_KEY'] = vals['PENDING_KEY']
-    app.config['IP_WHITE_LIST'] = vals['IP_WHITE_LIST']
+    # with open(app.config['SENSITIVE_INFO'], 'r') as fr:
+    #     vals = json.loads(fr.read())
+    # app.config['PENDING_KEY'] = vals['PENDING_KEY']
+    # app.config['IP_WHITE_LIST'] = vals['IP_WHITE_LIST']
     app.config[INITIALIZED] = True
-    return globus_sdk.ConfidentialAppAuthClient(vals['GLOBUS_WEB_APP_CLIENT_ID'], vals['GLOBUS_WEB_APP_CLIENT_SECRET'])
+    return globus_sdk.ConfidentialAppAuthClient(app.config['GLOBUS_WEB_APP_CLIENT_ID'], app.config['GLOBUS_WEB_APP_CLIENT_SECRET'])
