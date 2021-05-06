@@ -1,0 +1,6 @@
+To create a venv with visual studio code in an already existent project.
+1. Ensure you have a python interpreter installed and selected in visual studio.
+2. Open new Python Terminal: Ctrl+Shift+P: Python:Create Terminal
+3. In the terminal: python3 -m venv venv
+4. This should create a vscode popup with verbiage approximating 'We noticed a new venv. Do you want to use it?' Select Yes.
+5. Fin.
