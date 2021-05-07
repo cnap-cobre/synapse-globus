@@ -28,7 +28,7 @@ log.setLevel(logging.DEBUG)
 log.addHandler(my_handler)
 log.addHandler(logging.StreamHandler())
 
-creds_path = 'c:/temp/synapse_chron.creds'
+creds_path = '../secrets/ksu/synapse_chron.creds'
 
 
 def execute():
@@ -46,7 +46,7 @@ def execute():
         manifests[job.job_id] = job
 
     # Check to see if there are new jobs we need to add.
-    job_dirs = next(os.walk(conf['GLOBUS_DEST_DIR']))[1]
+    job_dirs = next(os.walk(conf['GLOBUS_TRANSFERS_TO_DATAVERSE_PATH']))[1]
     for d in job_dirs:
         if not d in manifests:
             j: Job = download_manifest(
@@ -57,26 +57,17 @@ def execute():
     # Check to see if any jobs are done transferring.
     store: db.DB = db.DB(creds_path)
 
-    # temp
 
+    #This logic is used to retrieve stats from a given dataset
+    #For use in analytics / piestar applications.
     dataset_id = 17
-    dvsvr: str = "https://elete.hosted.beocat.ksu.edu"
-
-    # dvs = dataset.getList(dvsvr,"76585908-601d-4f95-9257-75a96eab9dad")
-
-    stats: Dict = dataset.getDatasetInfo(dvsvr, dataset_id, store)
-
-    # stats: Dict = dataset.getStats(dvsvr, dataset_id)
-    # stats['total_bytes'] = store.execute(
-    #     store.get_bytes_of_dataset, dataset_id=dataset_id)
-    # stats['title'] = ''
-    # stats['doi'] = ''
-    # stats['id'] = dataset_id
-    # stats['url'] = dvsvr+'/dataset.xhtml?id='+dataset_id
-    # stats['doiurl'] =
+    stats: Dict = dataset.getDatasetInfo(conf['DATAVERSE_BASE_URL'], dataset_id, store)
     temp_output: str = json.dumps(stats, indent=4, sort_keys=True, default=str)
-    with open("c:/temp/exampleStats.json", 'w') as f:
+    with open("exampleStats.json", 'w') as f:
         f.write(temp_output)
+    #End dataset stat info...
+
+
 
     api_keys: List[str] = []
     j: xferjob.Job
@@ -151,7 +142,7 @@ def import_files(j: xferjob.Job, conf: Dict[str, str], apikey: str):
     for fd in j.files:
         if fd.status_code == xferjob.FileStatus.IMPORTED:
             continue
-        filepath = (conf['GLOBUS_DEST_DIR'] + "/" +
+        filepath = (conf['GLOBUS_TRANSFERS_TO_DATAVERSE_PATH'] + "/" +
                     j.job_id+"/"+fd.path).replace("//", "/")
         starttime = datetime.datetime.now()
         try:
