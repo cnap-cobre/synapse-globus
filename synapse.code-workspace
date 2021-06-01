@@ -2,6 +2,12 @@
 	"folders": [
 		{
 			"path": "."
+		},
+		{
+			"path": "../SynapseDVMachine"
+		},
+		{
+			"path": "../SynapseWebSvr"
 		}
 	],
 	"settings": {}
