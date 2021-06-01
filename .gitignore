@@ -1,9 +1,10 @@
 app.conf_*
 node_modules
 *.log
-TESTDVMachine/
-TESTWebSvr/
+SynapseDVMachine/
+SynapseWebSvr/
 exampleStats.json
+synapse_chron.creds
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
