@@ -14,6 +14,7 @@ from dataverse import dataset
 from dataverse import upload
 from dataverse import download
 from pathlib import Path
+import pathlib
 import usr
 import zipfile
 import time
@@ -59,7 +60,7 @@ app = CustomFlask(__name__)
 app.logger.setLevel(logging.DEBUG)
 app.logger.addHandler(my_handler)
 app.logger.removeHandler(default_handler)
-app.logger.info('Logger intitialized!')
+app.logger.info('Logger initialized!')
 app._static_folder = 'static'
 app._static_url_path = ''
 app.config.from_pyfile('app.conf')
@@ -453,8 +454,24 @@ def uploadPOST():
 
         # rp = rp[:rp.rfind("/", 0, -1)]
 
+        #If the user dragged over a file or a folder, the globus path will be the same. the browser path will be will return the subfolder if the folder is selected. If only files were selected, the sub folder will not be.
+        #Therefore, if the ending folder of the globus path equals the starting path of the browser, it is likely a duplicate that we will need to remove. e.g., If user drags over sub1 folder then, globus will = c/temp/sub1, fd = /sub1/filex
+        
+        browser_path = pathlib.Path(fd.path)
+        browser_first:str = str(pathlib.Path(*browser_path.parts[1:2]))
+        globus_last_dir:str = pathlib.PurePath(rp).name
+        print("ALL",browser_first)
+        print('First:',browser_first[:1],'Last:',globus_last_dir)
         fd.selected_globus_path = rp+fd.path
+        if browser_first == globus_last_dir:
+            #TODO: Likely a directory duplication.
+            #For thoroughness, we can check Globus' path
+            #To see if we have an actual full path. For now, de-dup.
+            # fd.path =
+            print("modifying path from",fd.selected_globus_path)
+            fd.selected_globus_path = rp+str(pathlib.Path(*browser_path.parts[2:]))
         fd.selected_globus_path = fd.selected_globus_path.replace('//', '/')
+        print("Path Selected:",fd.selected_globus_path)
     job.todisk(app.config['PENDING_PATH'])
 
     # OK, we should have a globus path attached to our files.

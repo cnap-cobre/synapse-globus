@@ -36,7 +36,7 @@ def execute():
     with open(creds_path, 'r') as f:
         raw = f.read()
     conf = json.loads(raw)
-
+    
     # Load our current manifest list.
     manifests = {}
     filenames = next(os.walk(conf['ACTIVE_MANIFEST_DIR']))[2]
@@ -90,7 +90,7 @@ def execute():
             # We need to import. If we don't already have a
             # api key list. Let's grab it from the db.
             if len(api_keys) == 0:
-                api_keys = store.execute(store.get_dv_api_keys, {})
+                api_keys = store.execute(store.get_dv_api_keys)
             # Import into dataverse.
             print(api_keys)
             apikey: str = lookup_api_key(api_keys, j.dv_user_id)

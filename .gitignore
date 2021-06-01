@@ -2,6 +2,7 @@ app.conf_*
 node_modules
 *.log
 TESTDVMachine/
+TESTWebSvr/
 exampleStats.json
 
 # Byte-compiled / optimized / DLL files
