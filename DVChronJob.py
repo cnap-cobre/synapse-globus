@@ -28,7 +28,7 @@ log.setLevel(logging.DEBUG)
 log.addHandler(my_handler)
 log.addHandler(logging.StreamHandler())
 
-creds_path = '../secrets/ksu/synapse_chron.creds'
+creds_path = 'synapse_chron.creds'
 
 
 def execute():
