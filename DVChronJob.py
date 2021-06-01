@@ -58,14 +58,14 @@ def execute():
     store: db.DB = db.DB(creds_path)
 
 
-    #This logic is used to retrieve stats from a given dataset
-    #For use in analytics / piestar applications.
-    dataset_id = 17
-    stats: Dict = dataset.getDatasetInfo(conf['DATAVERSE_BASE_URL'], dataset_id, store)
-    temp_output: str = json.dumps(stats, indent=4, sort_keys=True, default=str)
-    with open("exampleStats.json", 'w') as f:
-        f.write(temp_output)
-    #End dataset stat info...
+    # #This logic is used to retrieve stats from a given dataset
+    # #For use in analytics / piestar applications.
+    # dataset_id = 17
+    # stats: Dict = dataset.getDatasetInfo(conf['DATAVERSE_BASE_URL'], dataset_id, store)
+    # temp_output: str = json.dumps(stats, indent=4, sort_keys=True, default=str)
+    # with open("exampleStats.json", 'w') as f:
+    #     f.write(temp_output)
+    # #End dataset stat info...
 
 
 
