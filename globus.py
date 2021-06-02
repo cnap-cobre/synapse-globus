@@ -170,14 +170,15 @@ def setupXfer(vals: dict, globus_usr: str, globus_usr_id: str, dv_endpoint_id: s
     synapsePass = vals['DATAVERSE_GLOBUS_LOCAL_PASSWORD']
     native_client_id = vals['GLOBUS_NATIVE_APP_CLIENT_ID']
     refresh_token = vals['GLOBUS_NATIVE_APP_REFRESH_TOKEN']
+    base_dest_path = vals['INCOMING_XFER_PATH']
     # fr.close()
-
+    destPath = base_dest_path+'/'+dirName
     tc = getNativeTransferClient(native_client_id, refresh_token)
     activateEndpoint(tc, dv_endpoint_id, synapseUser, synapsePass)
-    log.append(str(createDir(tc, dv_endpoint_id, dirName)))
-    newShareResult = new_share(tc, dv_endpoint_id, globus_usr, dirName)
+    log.append(str(createDir(tc, dv_endpoint_id, destPath)))
+    newShareResult = new_share(tc, dv_endpoint_id, globus_usr, destPath)
     shareEID = newShareResult['id']
-    grant_permission(tc, shareEID, globus_usr_id, dirName)
+    grant_permission(tc, shareEID, globus_usr_id, destPath)
     return shareEID
 
 
