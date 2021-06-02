@@ -37,6 +37,14 @@ def execute():
         raw = f.read()
     conf = json.loads(raw)
     
+    log.info("Creating Paths...")
+    Path(conf['GLOBUS_TRANSFERS_TO_DATAVERSE_PATH']).mkdir(parents=True,exist_ok=True)
+    Path(conf['GLOBUS_SRC_DIR']).mkdir(parents=True,exist_ok=True)
+    Path(conf['ACTIVE_MANIFEST_DIR']).mkdir(parents=True,exist_ok=True)
+    Path(conf['ARCHIVED_MANIFEST_DIR']).mkdir(parents=True,exist_ok=True)
+    log.info("Done Creating Paths.")
+
+
     # Load our current manifest list.
     manifests = {}
     filenames = next(os.walk(conf['ACTIVE_MANIFEST_DIR']))[2]

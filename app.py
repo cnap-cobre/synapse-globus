@@ -75,6 +75,13 @@ for opt, arg in opts:
         app.logger.info('using config from cmd line arg: '+arg)
         app.config.from_pyfile(arg)
 
+
+#Initialize paths if not exists.
+app.logger.info("Creating Paths...")
+Path(app.config['USER_SETTINGS_PATH']).mkdir(parents=True,exist_ok=True)
+Path(app.config['PENDING_PATH']).mkdir(parents=True,exist_ok=True)
+Path(app.config['JOB_LOG_PATH']).mkdir(parents=True,exist_ok=True)
+app.logger.info("Done Creating Paths.")
 INITIALIZED = 'INITIALIZED'
 
 # Run the app if called via script
