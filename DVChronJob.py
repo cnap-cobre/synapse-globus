@@ -30,19 +30,22 @@ log.addHandler(logging.StreamHandler())
 
 creds_path = 'synapse_chron.creds'
 
+initialized = False
 
 def execute():
-    conf: Dict[str, str] = {}
-    with open(creds_path, 'r') as f:
-        raw = f.read()
-    conf = json.loads(raw)
     
-    log.info("Creating Paths...")
-    Path(conf['GLOBUS_TRANSFERS_TO_DATAVERSE_PATH']).mkdir(parents=True,exist_ok=True)
-    Path(conf['GLOBUS_SRC_DIR']).mkdir(parents=True,exist_ok=True)
-    Path(conf['ACTIVE_MANIFEST_DIR']).mkdir(parents=True,exist_ok=True)
-    Path(conf['ARCHIVED_MANIFEST_DIR']).mkdir(parents=True,exist_ok=True)
-    log.info("Done Creating Paths.")
+    if not initialized:
+        conf: Dict[str, str] = {}
+        with open(creds_path, 'r') as f:
+            raw = f.read()
+        conf = json.loads(raw)
+        
+        log.info("Creating Paths...")
+        Path(conf['GLOBUS_TRANSFERS_TO_DATAVERSE_PATH']).mkdir(parents=True,exist_ok=True)
+        Path(conf['GLOBUS_SRC_DIR']).mkdir(parents=True,exist_ok=True)
+        Path(conf['ACTIVE_MANIFEST_DIR']).mkdir(parents=True,exist_ok=True)
+        Path(conf['ARCHIVED_MANIFEST_DIR']).mkdir(parents=True,exist_ok=True)
+        log.info("Done Creating Paths.")
 
 
     # Load our current manifest list.
