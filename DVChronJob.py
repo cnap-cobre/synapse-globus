@@ -233,6 +233,9 @@ def download_manifest(server_uri: str, job_id: str, active_manifest_dir: str):
         # This means we're not authenticated or an invalid job id was given.
         print("Invalid Data.")
         return None
+    elif "<title>404 Not Found</title>" in data:
+        log.warning('Could not find job '+job_id+' on the web server '+server_uri)
+        return None
     dirpath = Path(active_manifest_dir)
     dirpath.mkdir(parents=True, exist_ok=True)
     mdpath = dirpath / (job_id+'.json')
