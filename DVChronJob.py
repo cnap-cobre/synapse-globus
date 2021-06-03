@@ -46,7 +46,7 @@ def execute():
         Path(conf['ACTIVE_MANIFEST_DIR']).mkdir(parents=True,exist_ok=True)
         Path(conf['ARCHIVED_MANIFEST_DIR']).mkdir(parents=True,exist_ok=True)
         log.info("Done Creating Paths.")
-
+        initialized = True
 
     # Load our current manifest list.
     manifests = {}
