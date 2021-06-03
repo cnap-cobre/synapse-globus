@@ -50,6 +50,7 @@ def execute():
     filenames = next(os.walk(conf['ACTIVE_MANIFEST_DIR']))[2]
     for filename in filenames:
         filepath = os.path.join(conf['ACTIVE_MANIFEST_DIR'], filename)
+        log.info('Pulling job from '+filepath+'...')
         job: xferjob.Job = xferjob.Job.from_disk_by_filepath(filepath)
         manifests[job.job_id] = job
 
