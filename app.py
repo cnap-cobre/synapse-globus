@@ -598,6 +598,10 @@ def pending():
             with open(mdpath, 'r') as f:
                 data = f.read()
             return(data)
+    else:
+        print("fldasldslfdldfa")
+        app.logger.warning('Client '+request.remote_addr+' is attempting to pull manifest '+request.args.get('jid')+', but is not found in whitelist. Ignoring...')
+        return('')
 
 
 @app.route("/test")
