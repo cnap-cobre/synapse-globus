@@ -26,6 +26,9 @@ Synapse is a browser-based (Flask) interface for transferring data between a [Da
 This is currently accomplished by transferring the data into a staging area "on" the Dataverse server, then use API calls for actually importing them in.
 In the future we plan on taking very large files and only importing in a placeholder. Getting that handle, we will replace the file that the import created, with the actual file, then update the DB with the new filesize.
 
+
+To Run Flask environment directly with ngrok (dev only): ngrok http -host-header=rewrite localhost:5000
+
 <!--
 ## Documentation
 
