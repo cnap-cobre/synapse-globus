@@ -29,12 +29,11 @@ log.addHandler(my_handler)
 log.addHandler(logging.StreamHandler())
 
 creds_path = 'synapse_chron.creds'
-conf: Dict[str, str] = {}
+conf = {}
 
 def execute():
     global conf
     if not conf:
-        conf: Dict[str, str] = {}
         with open(creds_path, 'r') as f:
             raw = f.read()
         conf = json.loads(raw)
