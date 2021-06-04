@@ -231,6 +231,7 @@ def download_manifest(server_uri: str, job_id: str, active_manifest_dir: str):
     url = '%s/pending' % (server_uri)
     url = url + '?jid='+job_id
     data: str = ''
+    log.debug("Submitting url: "+url)
     with requests.get(url) as raw:
         data = raw.text
     if len(data) < 1:
