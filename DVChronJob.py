@@ -52,8 +52,11 @@ def execute():
     for filename in filenames:
         filepath = os.path.join(conf['ACTIVE_MANIFEST_DIR'], filename)
         log.info('Pulling job from '+filepath+'...')
-        job: xferjob.Job = xferjob.Job.from_disk_by_filepath(filepath)
-        manifests[job.job_id] = job
+        try:
+            job: xferjob.Job = xferjob.Job.from_disk_by_filepath(filepath)
+            manifests[job.job_id] = job
+        except Exception as e:
+            log.error('Error parsing manifest '+filepath+': '+str(e))
 
     # Check to see if there are new jobs we need to add.
     job_dirs = next(os.walk(conf['GLOBUS_TRANSFERS_TO_DATAVERSE_PATH']))[1]
