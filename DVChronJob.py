@@ -29,12 +29,11 @@ log.addHandler(my_handler)
 log.addHandler(logging.StreamHandler())
 
 creds_path = 'synapse_chron.creds'
-
-initialized = False
+firstRun = True
 
 def execute():
-    
-    if not initialized:
+    global firstRun
+    if firstRun:
         conf: Dict[str, str] = {}
         with open(creds_path, 'r') as f:
             raw = f.read()
@@ -46,7 +45,7 @@ def execute():
         Path(conf['ACTIVE_MANIFEST_DIR']).mkdir(parents=True,exist_ok=True)
         Path(conf['ARCHIVED_MANIFEST_DIR']).mkdir(parents=True,exist_ok=True)
         log.info("Done Creating Paths.")
-        initialized = True
+        firstRun = False
 
     # Load our current manifest list.
     manifests = {}
