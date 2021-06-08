@@ -35,9 +35,11 @@ class DB:
 
     def execute(self, method, **kwargs):
         try:
+            print(str(self.use_ssh))
             conn = None
             result = None
             if self.use_ssh:
+                print("DSFKLSDJFL:KDSJFLK:DJF USING SSH")
                 with open_tunnel((self.ssh_host, self.ssh_port),
                                  ssh_username=self.ssh_usr,
                                  ssh_password=self.ssh_pass,
@@ -50,7 +52,7 @@ class DB:
                     sshserver.stop()
                 return result
             else:
-                print("NOT using SSH")
+                print("GHGHGHGHGGHG NOT using SSH")
                 conn = psycopg2.connect(
                     host=self.svr, database=self.dbname, user=self.usr, password=self.passcode, port=self.db_port)
                 return method(conn)
