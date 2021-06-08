@@ -27,7 +27,7 @@ class DB:
         self.dbname = d['DB_NAME']
         self.usr = d['DB_USR']
         self.passcode = d['DB_PASS']
-        self.use_ssh = d['DB_USE_SSH']
+        self.use_ssh = d['DB_USE_SSH'] == 'True'
         self.ssh_host = d['SSH_HOST']
         self.ssh_port = d['SSH_PORT']
         self.ssh_usr = d['SSH_USER']
