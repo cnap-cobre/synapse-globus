@@ -15,25 +15,32 @@ import jsonpickle
 import time
 import logging
 from logging.handlers import RotatingFileHandler
-
+print('Started.')
 log_formatter = logging.Formatter(
     '%(asctime)s %(levelname)s %(filename)s->%(funcName)s:(%(lineno)d) %(threadName)s %(message)s')
+print('Created log formatter')
 logFile = 'synapse_dataverse_service.log'
 my_handler = RotatingFileHandler(logFile, mode='a', maxBytes=5*1024*1024,
                                  backupCount=2, encoding=None, delay=False)
+print('Created rotating file handler')
 my_handler.setFormatter(log_formatter)
+print('Started.')
 my_handler.setLevel(logging.DEBUG)
+print('Set logging level')
 log = logging.getLogger()
+print('Got logger')
 log.setLevel(logging.DEBUG)
 log.addHandler(my_handler)
 log.addHandler(logging.StreamHandler())
 
 creds_path = 'synapse_chron.creds'
 conf = {}
-
+print("Done with init")
 def execute():
+    print("Top of loop")
     global conf
     if not conf:
+        print("First time init...")
         with open(creds_path, 'r') as f:
             raw = f.read()
         conf = json.loads(raw)
@@ -44,7 +51,7 @@ def execute():
         Path(conf['ACTIVE_MANIFEST_DIR']).mkdir(parents=True,exist_ok=True)
         Path(conf['ARCHIVED_MANIFEST_DIR']).mkdir(parents=True,exist_ok=True)
         log.info("Done Creating Paths.")
-        
+        print("First time init done")
 
     # Load our current manifest list.
     manifests = {}

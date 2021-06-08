@@ -815,12 +815,15 @@ def update_progress(update: usr.JobUpdate) -> bool:
 
 @app.route('/updateFromDV', methods=['POST'])
 def update_from_dv():
+    app.logger.debug("updateFromDV request from "+str(request.remote_addr))
     if str(request.remote_addr) in app.config['IP_WHITE_LIST']:
+        app.logger.debug("IP found in white list.")
         # Need to figure out what type of message this is:
         # 1. usr.JobUpdate msg for progess bars.
         # 2. joblog.Entry msg for logging.
 
         msg = jsonpickle.decode(request.data)
+        app.logger.debug("Payload: "+str(msg))
         if type(msg) is usr.JobUpdate:
             if update_progress(msg):
                 # We've updated our disk. Let caller know, so

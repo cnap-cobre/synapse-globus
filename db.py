@@ -50,6 +50,7 @@ class DB:
                     sshserver.stop()
                 return result
             else:
+                print("NOT using SSH")
                 conn = psycopg2.connect(
                     host=self.svr, database=self.dbname, user=self.usr, password=self.passcode, port=self.db_port)
                 return method(conn)
