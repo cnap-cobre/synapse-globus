@@ -35,7 +35,8 @@ class DB:
 
     def execute(self, method, **kwargs):
         try:
-            print(str(self.use_ssh))
+            print(self.use_ssh)
+            print(bool(self.use_ssh))
             conn = None
             result = None
             if self.use_ssh:
