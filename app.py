@@ -365,7 +365,7 @@ def globusProgress():
     sess: synapse_session.obj = get_session()
     if sess.ping_globus_next > datetime.now():
         return
-    sess.ping_globus_next = datetime.now() + timedelta(seconds=60)
+    sess.ping_globus_next = datetime.now() + timedelta(seconds=4)
     if sess.tc is None:
         sess.tc = getGlobusObj()
     us: usr.settings2 = sess.settings

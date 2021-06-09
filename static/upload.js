@@ -45,7 +45,7 @@ $(document).ready(function() {
   setHeartbeat();
 });
 function setHeartbeat() {
-  setTimeout("heartbeat()", 5000);
+  setTimeout("heartbeat()", 60000);
 }
 function heartbeat() {
   $.get("/pingglobus", { param1: "p1" }, function(data) {

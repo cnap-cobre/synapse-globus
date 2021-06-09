@@ -97,6 +97,8 @@ def execute():
         if j.job_status == xferjob.JobStatus.COMPLETED:
             continue
 
+        
+
         res = globus.svr_transfer_status(
             creds_path, j.globus_task_id)
         print(str(res))
@@ -247,6 +249,9 @@ def download_manifest(server_uri: str, job_id: str, active_manifest_dir: str):
         return None
     elif "<title>404 Not Found</title>" in data:
         log.warning('Could not find job '+job_id+' on the web server '+server_uri)
+        return None
+    elif '"globus_task_id": ""' in data:
+        log.warning("Returned manifest before globus task ID was assigned.")
         return None
     dirpath = Path(active_manifest_dir)
     dirpath.mkdir(parents=True, exist_ok=True)
