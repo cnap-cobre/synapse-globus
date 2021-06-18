@@ -61,7 +61,13 @@ def execute():
         log.info('Pulling job from '+filepath+'...')
         try:
             job: xferjob.Job = xferjob.Job.from_disk_by_filepath(filepath)
-            manifests[job.job_id] = job
+            
+            if job.job_status == xferjob.JobStatus.COMPLETED:
+                #Move to done.
+                os.replace(filepath,os.path.join(conf['ARCHIVED_MANIFEST_DIR'],filename))
+            else:
+                manifests[job.job_id] = job
+
         except Exception as e:
             log.error('Error parsing manifest '+filepath+': '+str(e))
 
@@ -69,6 +75,7 @@ def execute():
     job_dirs = next(os.walk(conf['GLOBUS_TRANSFERS_TO_DATAVERSE_PATH']))[1]
     for d in job_dirs:
         if not d in manifests:
+            log.info("Querying Synapse webserver for manifest "+d)
             j: Job = download_manifest(
                 conf['SYNAPSE_SERVER'], d, conf['ACTIVE_MANIFEST_DIR'])
             if j != None:
@@ -95,7 +102,7 @@ def execute():
     for j in manifests.values():
 
         if j.job_status == xferjob.JobStatus.COMPLETED:
-            continue
+           continue
 
         
 
@@ -208,8 +215,11 @@ def post_status_update(server_uri: str, status: usr.JobUpdate):
     log.info(status.job_id + ' '+str(status.percent_done)+' '+status.status_msg)
     data: str = jsonpickle.encode(status)
     url = '%s/updateFromDV' % (server_uri)
-    r = requests.post(url, data)
-    print(str(r))
+    try:
+        r = requests.post(url, data)
+        print(str(r))
+    except Exception as ex:
+        log.warning("Couldn't not post status update '"+str(r)+"' to Synapse Web server: "+str(ex))
 
 
 def lookup_api_key(keys: List[str], encoded_key: str) -> str:

@@ -57,7 +57,7 @@ class DB:
                 conn = psycopg2.connect(
                     host=self.svr, database=self.dbname, user=self.usr, password=self.passcode, port=self.db_port)
                 return method(conn)
-        except (Exception, psycopg.DatabaseError) as error:
+        except (Exception, psycopg2.DatabaseError) as error:
             print(error)
         finally:
             if conn is not None:
