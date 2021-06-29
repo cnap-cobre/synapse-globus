@@ -15,6 +15,8 @@ import jsonpickle
 import time
 import logging
 from logging.handlers import RotatingFileHandler
+import concurrent.futures
+# import shutil
 print('Started.')
 log_formatter = logging.Formatter(
     '%(asctime)s %(levelname)s %(filename)s->%(funcName)s:(%(lineno)d) %(threadName)s %(message)s')
@@ -53,11 +55,24 @@ def execute():
         log.info("Done Creating Paths.")
         print("First time init done")
 
+    archivedManifests = []
+    archived_files = next(os.walk(conf['ARCHIVED_MANIFEST_DIR']))[2]
+    print("Archived Files: ",archived_files)
+    for archivedFile in archived_files:
+        fn = os.path.splitext(archivedFile)[0]
+        archivedManifests.append(fn)
+        dataDir = os.path.join(conf['GLOBUS_TRANSFERS_TO_DATAVERSE_PATH'],fn)
+        #print("USED DIR: ",dataDir)
+    
     # Load our current manifest list.
     manifests = {}
     filenames = next(os.walk(conf['ACTIVE_MANIFEST_DIR']))[2]
     for filename in filenames:
         filepath = os.path.join(conf['ACTIVE_MANIFEST_DIR'], filename)
+        if os.path.split(filename)[0] in archivedManifests:
+            log.info("Skipping manifest "+filepath+": already done.")
+            continue
+
         log.info('Pulling job from '+filepath+'...')
         try:
             job: xferjob.Job = xferjob.Job.from_disk_by_filepath(filepath)
@@ -65,7 +80,11 @@ def execute():
             if job.job_status == xferjob.JobStatus.COMPLETED:
                 #Move to done.
                 os.replace(filepath,os.path.join(conf['ARCHIVED_MANIFEST_DIR'],filename))
+                # dataDir = os.path.join(conf['GLOBUS_TRANSFERS_TO_DATAVERSE_PATH'],filenam
+                # shutil.rmtree('/home/me/test')
+                log.info("Moved active manifest "+filename+" to done.")
             else:
+                log.info("Adding "+filename+" to process.")
                 manifests[job.job_id] = job
 
         except Exception as e:
@@ -74,6 +93,9 @@ def execute():
     # Check to see if there are new jobs we need to add.
     job_dirs = next(os.walk(conf['GLOBUS_TRANSFERS_TO_DATAVERSE_PATH']))[1]
     for d in job_dirs:
+        if d in archivedManifests:
+            log.info("Skipping dir because already processed: "+d)
+            continue
         if not d in manifests:
             log.info("Querying Synapse webserver for manifest "+d)
             j: Job = download_manifest(
@@ -153,6 +175,41 @@ def execute():
             # j.todisk(conf['ACTIVE_MANIFEST_DIR'])
             # print("Done!")
 
+def MarkJobAsDone():
+    pass
+
+def importAFile(j: xferjob.Job, fd:xferjob.FileData, apikey:str):
+    result:str = ''
+    if fd.status_code == xferjob.FileStatus.IMPORTED:
+        return result
+    starttime = datetime.datetime.now()
+    filepath = (conf['GLOBUS_TRANSFERS_TO_DATAVERSE_PATH'] + "/" +
+                    j.job_id+"/"+fd.path).replace("//", "/")
+    try:
+        fd.import_result = upload.onefile(server=conf['DATAVERSE_BASE_URL'],
+                                            api_key=apikey,
+                                            dataset_id=j.dataset_id,
+                                            filepath=filepath,
+                                            desc=fd.desc,
+                                            cats=fd.tags)
+    except Exception as ex2:
+        fd.import_result = {'status': 'ERROR', 'message': str(ex2)}
+
+    if (fd.import_result['status'] == 'OK' or
+            (fd.import_result['status'] == 'ERROR' and 'This file already exists' in fd.import_result['message'])):
+        fd.import_duration = datetime.datetime.now() - starttime
+        fd.status_code = xferjob.FileStatus.IMPORTED
+        fd.time_imported = datetime.datetime.now()
+    else:
+        fd.status_code = xferjob.FileStatus.IMPORT_ERR
+        fd.status_details = str(fd.import_result)
+        log.warning("Error Importing file: "+fd.import_result['message'])
+        result = "Error Importing " + \
+            fd.path+": "+fd.import_result['message']
+    j.todisk(conf['ACTIVE_MANIFEST_DIR'])
+    
+    return result
+        
 
 def import_files(j: xferjob.Job, conf: Dict[str, str], apikey: str):
     status: usr.JobUpdate = usr.JobUpdate(
@@ -168,39 +225,27 @@ def import_files(j: xferjob.Job, conf: Dict[str, str], apikey: str):
     status.percent_done = usr.calcProgress(2, cnt_done / len(j.files))
     post_status_update(conf['SYNAPSE_SERVER'], status)
     jobstarttime = datetime.datetime.now()
-    for fd in j.files:
-        if fd.status_code == xferjob.FileStatus.IMPORTED:
-            continue
-        filepath = (conf['GLOBUS_TRANSFERS_TO_DATAVERSE_PATH'] + "/" +
-                    j.job_id+"/"+fd.path).replace("//", "/")
-        starttime = datetime.datetime.now()
-        try:
-            fd.import_result = upload.onefile(server=conf['DATAVERSE_BASE_URL'],
-                                              api_key=apikey,
-                                              dataset_id=j.dataset_id,
-                                              filepath=filepath,
-                                              desc=fd.desc,
-                                              cats=fd.tags)
+    err_cnt = 0
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        future_to_url = (executor.submit(importAFile, j,fd,apikey) for fd in j.files)
+        for future in concurrent.futures.as_completed(future_to_url):
+            try:
+                data = future.result()
+                if data != "":
+                    err_cnt += 1
+                    status = data
+            except Exception as exc:
+                err_cnt += 1
+                log.error("Couldn't import "+str(j.job_id)+"."+str(exc))
+            finally:
+                cnt_done += 1
+                status.percent_done = usr.calcProgress(2, cnt_done / len(j.files))
+                post_status_update(conf['SYNAPSE_SERVER'], status)
+                print(status)
 
-        except Exception as ex2:
-            fd.import_result = {'status': 'ERROR', 'message': str(ex2)}
-
-        if (fd.import_result['status'] == 'OK' or
-                (fd.import_result['status'] == 'ERROR' and 'This file already exists' in fd.import_result['message'])):
-            fd.import_duration = datetime.datetime.now() - starttime
-            fd.status_code = xferjob.FileStatus.IMPORTED
-            fd.time_imported = datetime.datetime.now()
-        else:
-            fd.status_code = xferjob.FileStatus.IMPORT_ERR
-            fd.status_details = str(fd.import_result)
-            log.warning("Error Importing file: "+fd.import_result['message'])
-            status.error = True
-            status.status_msg = "Error Importing " + \
-                fd.path+": "+fd.import_result['message']
-        j.todisk(conf['ACTIVE_MANIFEST_DIR'])
-        cnt_done += 1
-        status.percent_done = usr.calcProgress(2, cnt_done / len(j.files))
-        post_status_update(conf['SYNAPSE_SERVER'], status)
+            time2 = time.time()
+    
+    
     j.job_status = xferjob.JobStatus.COMPLETED
     j.total_import_time = datetime.datetime.now() - jobstarttime
     j.todisk(conf['ACTIVE_MANIFEST_DIR'])
