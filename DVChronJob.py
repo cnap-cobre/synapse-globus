@@ -200,6 +200,7 @@ def importAFile(j: xferjob.Job, fd:xferjob.FileData, apikey:str):
         fd.import_duration = datetime.datetime.now() - starttime
         fd.status_code = xferjob.FileStatus.IMPORTED
         fd.time_imported = datetime.datetime.now()
+        log.info("~~~~~~~~~~~~Successfully imported file "+fd.path)
     else:
         fd.status_code = xferjob.FileStatus.IMPORT_ERR
         fd.status_details = str(fd.import_result)
