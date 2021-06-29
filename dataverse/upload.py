@@ -48,17 +48,17 @@ def onefile(server, api_key, dataset_id, filepath, desc, cats):
     # -------------------
     # Make the request
     # -------------------
-    print('-' * 40)
-    print('making request: %s' % url_dataset_id)
+    # print('-' * 40)
+    # print('making request: %s' % url_dataset_id)
     r = requests.post(url_dataset_id, data=payload, files=files)
 
     # -------------------
     # Print the response
     # -------------------
-    print('-' * 40)
-    print(r.json())
-    print(r.status_code)
-    return r.json()
+    # print('-' * 40)
+    # print(r.json())
+    # print(r.status_code)
+    # return r.json()
     # # --------------------------------------------------
     # # Add file using the Dataset's persistentId (e.g. doi, hdl, etc)
     # # --------------------------------------------------

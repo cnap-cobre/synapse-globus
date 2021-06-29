@@ -195,7 +195,7 @@ def importAFile(j: xferjob.Job, fd:xferjob.FileData, apikey:str):
                                             cats=fd.tags)
     except Exception as ex2:
         fd.import_result = {'status': 'ERROR', 'message': str(ex2)}
-    log.info(str(fd.import_result))
+    # log.info(str(fd.import_result))
     if (fd.import_result['status'] == 'OK' or
             (fd.import_result['status'] == 'ERROR' and 'This file already exists' in fd.import_result['message'])):
         fd.import_duration = datetime.datetime.now() - starttime
@@ -228,7 +228,7 @@ def import_files(j: xferjob.Job, conf: Dict[str, str], apikey: str):
     #post_status_update(conf['SYNAPSE_SERVER'], status)
     jobstarttime = datetime.datetime.now()
     err_cnt = 0
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
         future_to_url = (executor.submit(importAFile, j,fd,apikey) for fd in j.files)
         for future in concurrent.futures.as_completed(future_to_url):
             try:
