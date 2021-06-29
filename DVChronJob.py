@@ -186,6 +186,7 @@ def importAFile(j: xferjob.Job, fd:xferjob.FileData, apikey:str):
     filepath = (conf['GLOBUS_TRANSFERS_TO_DATAVERSE_PATH'] + "/" +
                     j.job_id+"/"+fd.path).replace("//", "/")
     try:
+        log.info("+++++Importing "+fd.path)
         fd.import_result = upload.onefile(server=conf['DATAVERSE_BASE_URL'],
                                             api_key=apikey,
                                             dataset_id=j.dataset_id,
@@ -194,7 +195,7 @@ def importAFile(j: xferjob.Job, fd:xferjob.FileData, apikey:str):
                                             cats=fd.tags)
     except Exception as ex2:
         fd.import_result = {'status': 'ERROR', 'message': str(ex2)}
-
+    log.info(str(fd.import_result))
     if (fd.import_result['status'] == 'OK' or
             (fd.import_result['status'] == 'ERROR' and 'This file already exists' in fd.import_result['message'])):
         fd.import_duration = datetime.datetime.now() - starttime
