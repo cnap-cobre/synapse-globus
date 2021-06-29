@@ -224,10 +224,10 @@ def import_files(j: xferjob.Job, conf: Dict[str, str], apikey: str):
         if fd.status_code == xferjob.FileStatus.IMPORTED:
             cnt_done += 1
     status.percent_done = usr.calcProgress(2, cnt_done / len(j.files))
-    post_status_update(conf['SYNAPSE_SERVER'], status)
+    #post_status_update(conf['SYNAPSE_SERVER'], status)
     jobstarttime = datetime.datetime.now()
     err_cnt = 0
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         future_to_url = (executor.submit(importAFile, j,fd,apikey) for fd in j.files)
         for future in concurrent.futures.as_completed(future_to_url):
             try:
@@ -241,7 +241,7 @@ def import_files(j: xferjob.Job, conf: Dict[str, str], apikey: str):
             finally:
                 cnt_done += 1
                 status.percent_done = usr.calcProgress(2, cnt_done / len(j.files))
-                post_status_update(conf['SYNAPSE_SERVER'], status)
+                #post_status_update(conf['SYNAPSE_SERVER'], status)
                 print(status)
 
             time2 = time.time()
