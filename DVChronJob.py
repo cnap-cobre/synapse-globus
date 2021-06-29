@@ -186,7 +186,7 @@ def importAFile(j: xferjob.Job, fd:xferjob.FileData, apikey:str):
     filepath = (conf['GLOBUS_TRANSFERS_TO_DATAVERSE_PATH'] + "/" +
                     j.job_id+"/"+fd.path).replace("//", "/")
     try:
-        log.info("+++++Importing "+fd.path)
+        log.info("+++++Importing "+fd.path+'. status: '+str(fd.status_code))
         fd.import_result = upload.onefile(server=conf['DATAVERSE_BASE_URL'],
                                             api_key=apikey,
                                             dataset_id=j.dataset_id,
