@@ -226,7 +226,7 @@ def import_files(j: xferjob.Job, conf: Dict[str, str], apikey: str):
     post_status_update(conf['SYNAPSE_SERVER'], status)
     jobstarttime = datetime.datetime.now()
     err_cnt = 0
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
         future_to_url = (executor.submit(importAFile, j,fd,apikey) for fd in j.files)
         for future in concurrent.futures.as_completed(future_to_url):
             try:
