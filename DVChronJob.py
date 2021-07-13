@@ -130,12 +130,12 @@ def execute():
 
         res = globus.svr_transfer_status(
             creds_path, j.globus_task_id)
-        print(str(res))
+        print('globus res',str(res))
 
         # Post status update.
-        update: usr.JobUpdate = usr.JobUpdate.fromGlobusTaskObj(
-            j.globus_id, j.job_id, len(j.files), 1, res)
-        post_status_update(conf['SYNAPSE_SERVER'], update)
+        # update: usr.JobUpdate = usr.JobUpdate.fromGlobusTaskObj(
+        #     j.globus_id, j.job_id, len(j.files), 1, res)
+        # post_status_update(conf['SYNAPSE_SERVER'], update)
 
         if res['status'] == 'SUCCEEDED':
             # We need to import. If we don't already have a
@@ -143,7 +143,7 @@ def execute():
             if len(api_keys) == 0:
                 api_keys = store.execute(store.get_dv_api_keys)
             # Import into dataverse.
-            print(api_keys)
+            print("api keys",api_keys)
             apikey: str = lookup_api_key(api_keys, j.dv_user_id)
             if apikey == '':
                 raise Exception("Cannot find apikey for jobid "+j.job_id)
@@ -243,7 +243,7 @@ def import_files(j: xferjob.Job, conf: Dict[str, str], apikey: str):
                 cnt_done += 1
                 status.percent_done = usr.calcProgress(2, cnt_done / len(j.files))
                 #post_status_update(conf['SYNAPSE_SERVER'], status)
-                print(status)
+                print('File result status:',status)
 
             time2 = time.time()
     
@@ -264,7 +264,7 @@ def post_status_update(server_uri: str, status: usr.JobUpdate):
     url = '%s/updateFromDV' % (server_uri)
     try:
         r = requests.post(url, data)
-        print(str(r))
+        print('posting to websvr:',str(r))
     except Exception as ex:
         log.warning("Couldn't not post status update '"+str(r)+"' to Synapse Web server: "+str(ex))
 
