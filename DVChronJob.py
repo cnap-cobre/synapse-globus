@@ -16,6 +16,7 @@ import time
 import logging
 from logging.handlers import RotatingFileHandler
 import concurrent.futures
+import traceback
 # import shutil
 print('Started.')
 log_formatter = logging.Formatter(
@@ -239,11 +240,12 @@ def import_files(j: xferjob.Job, conf: Dict[str, str], apikey: str):
             except Exception as exc:
                 err_cnt += 1
                 log.error("Couldn't import "+str(j.job_id)+"."+str(exc))
+                log.error(traceback.format_exc())
             finally:
                 cnt_done += 1
                 status.percent_done = usr.calcProgress(2, cnt_done / len(j.files))
                 #post_status_update(conf['SYNAPSE_SERVER'], status)
-                print('File result status:',status)
+                print('File result status:',json.dumps(status))
 
             time2 = time.time()
     
