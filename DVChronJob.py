@@ -196,6 +196,8 @@ def importAFile(j: xferjob.Job, fd:xferjob.FileData, apikey:str):
                                             cats=fd.tags)
     except Exception as ex2:
         fd.import_result = {'status': 'ERROR', 'message': str(ex2)}
+        log.error("GHGH ERROR:",str(ex2))
+        log.error(traceback.format_exc())
     # log.info(str(fd.import_result))
     if (fd.import_result['status'] == 'OK' or
             (fd.import_result['status'] == 'ERROR' and 'This file already exists' in fd.import_result['message'])):
