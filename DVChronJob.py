@@ -194,6 +194,7 @@ def importAFile(j: xferjob.Job, fd:xferjob.FileData, apikey:str):
                                             filepath=filepath,
                                             desc=fd.desc,
                                             cats=fd.tags)
+        log.info("!!!!!!! done importing")
     except Exception as ex2:
         fd.import_result = {'status': 'ERROR', 'message': str(ex2)}
         log.error("GHGH ERROR:",str(ex2))
