@@ -249,7 +249,7 @@ def import_files(j: xferjob.Job, conf: Dict[str, str], apikey: str):
                 cnt_done += 1
                 status.percent_done = usr.calcProgress(2, cnt_done / len(j.files))
                 #post_status_update(conf['SYNAPSE_SERVER'], status)
-                print('File result status:',json.dumps(status))
+                print('File result status:',status.status_msg)
 
             time2 = time.time()
     
