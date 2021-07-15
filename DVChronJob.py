@@ -17,7 +17,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 import concurrent.futures
 import traceback
-# import shutil
+import shutil
 print('Started.')
 log_formatter = logging.Formatter(
     '%(asctime)s %(levelname)s %(filename)s->%(funcName)s:(%(lineno)d) %(threadName)s %(message)s')
@@ -95,7 +95,8 @@ def execute():
     job_dirs = next(os.walk(conf['GLOBUS_TRANSFERS_TO_DATAVERSE_PATH']))[1]
     for d in job_dirs:
         if d in archivedManifests:
-            log.info("Skipping dir because already processed: "+d)
+            log.info("DELETING dir because already processed: "+d)
+            shutil.rmtree(d)
             continue
         if not d in manifests:
             log.info("Querying Synapse webserver for manifest "+d)
