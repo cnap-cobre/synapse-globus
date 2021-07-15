@@ -373,7 +373,11 @@ def globusProgress():
     for jh in us.job_history.values():
         if jh.last_update.percent_done < 100 and not jh.last_update.finished_globus:
             task_status = globus.tasks_available(sess.tc, jh.globus_task_id)
+            print("TASK STATUS:",task_status)
             # task_status = globus.usr_transfer_status(sess.tc, jh.globus_task_id)
+            if task_status == None:
+                continue
+            
             step: int = 0
             if jh.src_type == xferjob.EndPointType.DATAVERSE:
                 step = 2

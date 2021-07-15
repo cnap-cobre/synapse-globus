@@ -49,7 +49,7 @@ class JobUpdate():
     @staticmethod
     # Step: 0 = Init & placed on queue. 1, 2
     def fromGlobusTaskObj(globus_id: str, job_id: str, total_files: int, step: int, res: Dict) -> JobUpdate:
-        print("FROM GLOBUS TASK OBJ:",str(res))
+        # print("FROM GLOBUS TASK OBJ:",str(res))
         xfered: int = res['data']['files_transferred']
         skipped: int = res['data']['files_skipped']
         bps: int = res['data']['effective_bytes_per_second']
