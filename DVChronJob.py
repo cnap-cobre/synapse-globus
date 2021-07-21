@@ -2,6 +2,7 @@ import os
 import requests
 from pathlib import Path
 import datetime
+from dateutil.parser import *
 from dataverse import xferjob
 from dataverse import upload
 from dataverse import dataset
@@ -134,7 +135,8 @@ def execute():
 
         res = globus.svr_transfer_status(
             creds_path, j.globus_task_id)
-        print('globus res',str(res))
+        print('GLOBUS res',str(res))
+        print('JOB STARTED ON ',str(j.total_start_time))
 
         # Post status update.
         # update: usr.JobUpdate = usr.JobUpdate.fromGlobusTaskObj(
@@ -142,7 +144,17 @@ def execute():
         # post_status_update(conf['SYNAPSE_SERVER'], update)
 
         if res['status'] == 'SUCCEEDED':
-            # We need to import. If we don't already have a
+            # We need to import. 
+            if j.import_start_time == datetime.datetime.min:
+                print(res['data']['request_time'],res['data']['completion_time'])
+                gst = parse(res['data']['request_time'])
+                globusEndTime = parse(res['data']['completion_time'])
+                j.globus_time = globusEndTime - gst
+                print("GLOBUS TIME:",str(gst),str(globusEndTime),str(j.globus_time))
+                j.import_start_time = datetime.datetime.now()
+                j.todisk(conf['ACTIVE_MANIFEST_DIR'])
+
+            # If we don't already have a
             # api key list. Let's grab it from the db.
             if len(api_keys) == 0:
                 api_keys = store.execute(store.get_dv_api_keys)
@@ -258,7 +270,27 @@ def import_files(j: xferjob.Job, conf: Dict[str, str], apikey: str):
     
     
     j.job_status = xferjob.JobStatus.COMPLETED
-    j.total_import_time = datetime.datetime.now() - jobstarttime
+    j.import_end_time = datetime.datetime.now()
+    j.total_import_time = j.import_end_time - j.import_start_time
+    
+    j.total_end_time = datetime.datetime.now()
+    j.total_time = j.total_end_time - j.total_start_time
+
+    header = None
+    if not os.path.exists("PERF_LOG.csv"):
+        header="Start Time,Num of Files,Total Bytes Processed,Total Seconds took,Seconds in Globus,Seconds to import into dataverse,Seconds to process Metadata\n"
+    row=str(j.total_start_time)+","+str(len(j.files))+","+str(j.job_size_bytes)+","+str(j.total_time.total_seconds())+","+str(j.globus_time.total_seconds())+","+str(j.total_import_time.total_seconds())+","+str(j.metadata_sec)+"\n"
+    with open('PERF_LOG.csv','a') as csvResults:
+        try:
+            if header is not None:
+                csvResults.write(header)
+            csvResults.write(row)
+        except Exception as eee:
+            print(str(eee))
+
+    
+
+
     j.todisk(conf['ACTIVE_MANIFEST_DIR'])
     j.todisk(conf['ARCHIVED_MANIFEST_DIR'])
     status.percent_done = 100
@@ -307,8 +339,12 @@ def download_manifest(server_uri: str, job_id: str, active_manifest_dir: str):
     url = url + '?jid='+job_id
     data: str = ''
     log.debug("Submitting url: "+url)
-    with requests.get(url) as raw:
-        data = raw.text
+    try:
+        with requests.get(url) as raw:
+            data = raw.text
+    except Exception as eeee:
+        log.error(eeee)
+        return None
     if len(data) < 1:
         # This means we're not authenticated or an invalid job id was given.
         print("Invalid Data.")

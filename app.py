@@ -27,6 +27,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 import sys
 import getopt
+from timeit import default_timer as timer   
 # import redis
 
 # Setup logging
@@ -445,7 +446,10 @@ def uploadPOST():
     fd: xferjob.FileData
     for fd in job.files:
         fn = os.path.basename(fd.path)
+        start = timer()
         extra_metadata = metadata_extractor.extract(fn)
+        end = timer()
+        job.metadata_sec += end-start
         tags2 = list(tags)
         filedesc = desc+" "
         if extra_metadata is not None:

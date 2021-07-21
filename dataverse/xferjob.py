@@ -143,7 +143,15 @@ class Job:
     job_size_bytes: int = 0
     msglog: List[str] = []
     notified: bool = False
-    total_import_time: datetime.timedelta = datetime.timedelta(-1)
+    
+    
+
+    # import_start_time: datetime.datetime = datetime.datetime.min
+    # import_end_time: datetime.datetime = datetime.datetime.min
+    # total_import_time: datetime.timedelta = datetime.timedelta(-1)
+
+    
+    
     job_status: JobStatus = JobStatus.PENDING_IMPORT
     last_updated: str = ''
     percent_done: int = 0
@@ -160,8 +168,22 @@ class Job:
         self.dest_endpoint = dest_endpoint
         self.msglog = log
         self.files = []
-        self.total_import_time = datetime.timedelta(-1)
+        # self.total_import_time = datetime.timedelta(-1)
         self.job_status: JobStatus = JobStatus.PENDING_IMPORT
+        self.client_time:datetime.timedelta = datetime.timedelta(-1)
+        self.globus_time: datetime.timedelta = datetime.timedelta(-1)
+        
+        self.total_start_time:datetime.datetime = datetime.datetime.now()
+        self.total_end_time:datetime.datetime = datetime.datetime.min
+        self.total_time:datetime.timedelta = datetime.timedelta(-1)
+
+        self.import_start_time:datetime.datetime = datetime.datetime.min
+        self.import_end_time:datetime.datetime = datetime.datetime.min
+        self.total_import_time: datetime.timedelta = datetime.timedelta(-1)
+
+        # self.metadata_start_time:datetime.datetime = datetime.datetime.min
+        # self.metadata_end_time:datetime.datetime = datetime.datetime.min
+        self.metadata_sec:float = 0
 
     def log(self, msg: str):
         self.msglog.append(str(datetime.datetime.now())+' '+msg)
