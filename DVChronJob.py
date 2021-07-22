@@ -93,10 +93,10 @@ def execute():
             log.error('Error parsing manifest '+filepath+': '+str(e))
 
     # Check to see if there are new jobs we need to add.
-    # job_dirs = next(os.walk(conf['GLOBUS_TRANSFERS_TO_DATAVERSE_PATH']))[1]
+    job_dirs = next(os.walk(conf['GLOBUS_TRANSFERS_TO_DATAVERSE_PATH']))[1]
     # for d in job_dirs:
     #for root, dirs, files in os.walk(conf['GLOBUS_TRANSFERS_TO_DATAVERSE_PATH']):
-    for dirs in os.listdir(conf['GLOBUS_TRANSFERS_TO_DATAVERSE_PATH']):
+    for dirs in job_dirs:
         for d in dirs:
             if d in archivedManifests:
                 log.info("DELETING dir because already processed: "+d)
