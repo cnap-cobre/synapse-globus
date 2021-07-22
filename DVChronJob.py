@@ -95,13 +95,14 @@ def execute():
     # Check to see if there are new jobs we need to add.
     # job_dirs = next(os.walk(conf['GLOBUS_TRANSFERS_TO_DATAVERSE_PATH']))[1]
     # for d in job_dirs:
-    for root, dirs, files in os.walk(conf['GLOBUS_TRANSFERS_TO_DATAVERSE_PATH']):
+    #for root, dirs, files in os.walk(conf['GLOBUS_TRANSFERS_TO_DATAVERSE_PATH']):
+    for dirs in os.listdir(conf['GLOBUS_TRANSFERS_TO_DATAVERSE_PATH']):
         for d in dirs:
             if d in archivedManifests:
                 log.info("DELETING dir because already processed: "+d)
                 shutil.rmtree(os.path.join(root,d))
                 continue
-            if not d in manifests:
+            if not d in manifests and not d in archivedManifests:
                 log.info("Querying Synapse webserver for manifest "+d)
                 j: Job = download_manifest(
                     conf['SYNAPSE_SERVER'], d, conf['ACTIVE_MANIFEST_DIR'])
