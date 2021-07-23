@@ -70,6 +70,7 @@ def execute():
     manifests = {}
     filenames = next(os.walk(conf['ACTIVE_MANIFEST_DIR']))[2]
     for filename in filenames:
+        print("Manifest file name:",filename)
         filepath = os.path.join(conf['ACTIVE_MANIFEST_DIR'], filename)
         if os.path.split(filename)[0] in archivedManifests:
             log.info("Skipping manifest "+filepath+": already done.")
