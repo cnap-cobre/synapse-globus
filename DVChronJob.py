@@ -362,7 +362,7 @@ def download_manifest(server_uri: str, job_id: str, active_manifest_dir: str):
     mdpath = dirpath / (job_id+'.json')
     with open(mdpath, 'w') as f:
         f.write(data)
-    log.info('Pulling job '+job_id+' from dir '+active_manifest_dir+'...')
+    log.info('Downloaded manifest. Pulling job '+job_id+' from dir '+active_manifest_dir+'...')
     job: xferjob.Job = xferjob.Job.fromdisk(job_id, active_manifest_dir)
     return job
 
