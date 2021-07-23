@@ -99,6 +99,7 @@ def execute():
     #for root, dirs, files in os.walk(conf['GLOBUS_TRANSFERS_TO_DATAVERSE_PATH']):
     for dirs in job_dirs:
         for d in dirs:
+            print("Checking datapath",d)
             if d in archivedManifests:
                 log.info("DELETING dir because already processed: "+d)
                 shutil.rmtree(os.path.join(root,d))
