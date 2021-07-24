@@ -97,7 +97,7 @@ def execute():
     # job_dirs = next(os.walk(conf['GLOBUS_TRANSFERS_TO_DATAVERSE_PATH']))[1]
     # for d in job_dirs:
     for root, dirs, files in os.walk(conf['GLOBUS_TRANSFERS_TO_DATAVERSE_PATH']):
-    for d in dirs:
+    # for d in dirs:
         # for d in dirs:
         print("Checking datapath",os.path.join(root,d))
         if d in archivedManifests:
